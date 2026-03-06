@@ -170,6 +170,26 @@ export async function PATCH(
         new ObjectId(session.user.id),
         session.user.name
       );
+    } else if (body.removeCollaborator) {
+      const { userId: removeUserId } = body.removeCollaborator;
+      if (!removeUserId || !ObjectId.isValid(removeUserId)) {
+        return NextResponse.json(
+          { error: "Valid userId is required" },
+          { status: 400 }
+        );
+      }
+
+      // Prevent removing the owner
+      if (doc.ownerId.equals(new ObjectId(removeUserId))) {
+        return NextResponse.json(
+          { error: "Cannot remove the document owner" },
+          { status: 400 }
+        );
+      }
+
+      update.$pull = {
+        collaborators: { userId: new ObjectId(removeUserId) },
+      };
     }
 
     update.$set = setFields;
@@ -178,6 +198,8 @@ export async function PATCH(
     const userId = new ObjectId(session.user.id);
     if (body.addCollaborator) {
       await logActivity(new ObjectId(id), userId, "shared", { email: body.addCollaborator.email, role: body.addCollaborator.role });
+    } else if (body.removeCollaborator) {
+      await logActivity(new ObjectId(id), userId, "shared", { action: "collaborator_removed", removedUserId: body.removeCollaborator.userId });
     } else if (body.title !== undefined || body.isPublic !== undefined) {
       await logActivity(new ObjectId(id), userId, "edited");
     }

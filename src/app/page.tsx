@@ -16,6 +16,8 @@ import {
   ChevronDown,
   LayoutTemplate,
   Menu,
+  User,
+  Users,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { DocumentMeta } from "@/types";
@@ -26,7 +28,7 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { MobileMenu } from "@/components/ui/MobileMenu";
 
-type ViewFilter = "all" | "starred" | "recent" | "folder" | "tag";
+type ViewFilter = "all" | "starred" | "recent" | "folder" | "tag" | "my" | "shared";
 
 function getTagColor(tag: string) {
   let hash = 0;
@@ -47,27 +49,48 @@ export default function DashboardPage() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const fetchDocuments = useCallback(async () => {
+  const fetchDocuments = useCallback(async (loadPage = 1) => {
+    if (loadPage > 1) setLoadingMore(true);
+
     const params = new URLSearchParams();
+    params.set("page", String(loadPage));
+    params.set("limit", "20");
     if (search) params.set("q", search);
     if (viewFilter === "starred") params.set("starred", "true");
+    if (viewFilter === "my") params.set("owner", "true");
+    if (viewFilter === "shared") params.set("shared", "true");
     if (selectedFolder) params.set("folder", selectedFolder);
     if (selectedTag) params.set("tag", selectedTag);
 
-    const url = search || viewFilter !== "all"
+    const useSearch = search || viewFilter !== "all" && viewFilter !== "recent";
+    const url = useSearch
       ? `/api/documents/search?${params}`
-      : "/api/documents";
+      : `/api/documents?${params}`;
 
     const res = await fetch(url);
     if (res.ok) {
-      setDocuments(await res.json());
+      const data = await res.json();
+      const docs = data.documents || data;
+      if (loadPage === 1) {
+        setDocuments(docs);
+      } else {
+        setDocuments((prev) => [...prev, ...docs]);
+      }
+      setHasMore(data.hasMore || false);
+      setPage(loadPage);
     }
     setLoading(false);
+    setLoadingMore(false);
   }, [search, viewFilter, selectedFolder, selectedTag]);
 
   useEffect(() => {
-    fetchDocuments();
+    setPage(1);
+    setHasMore(false);
+    fetchDocuments(1);
   }, [fetchDocuments]);
 
   async function handleCreate() {
@@ -132,6 +155,8 @@ export default function DashboardPage() {
     <nav className="space-y-1">
       {([
         { filter: "all" as const, icon: <FileText size={16} />, label: "All Documents" },
+        { filter: "my" as const, icon: <User size={16} />, label: "My Documents" },
+        { filter: "shared" as const, icon: <Users size={16} />, label: "Shared with Me" },
         { filter: "recent" as const, icon: <Clock size={16} />, label: "Recent" },
         { filter: "starred" as const, icon: <Star size={16} />, label: "Starred" },
       ]).map(({ filter, icon, label }) => (
@@ -214,9 +239,12 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <NotificationBell />
-            <span className="text-sm text-[var(--muted-foreground)] hidden sm:block">
+            <button
+              onClick={() => router.push("/profile")}
+              className="text-sm text-[var(--muted-foreground)] hidden sm:block hover:text-[var(--foreground)] transition-colors"
+            >
               {session?.user?.name}
-            </span>
+            </button>
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
               className="p-2 rounded-full hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
@@ -307,6 +335,10 @@ export default function DashboardPage() {
                   ? "No documents match your search"
                   : viewFilter === "starred"
                   ? "No starred documents"
+                  : viewFilter === "my"
+                  ? "You haven't created any documents"
+                  : viewFilter === "shared"
+                  ? "No documents shared with you"
                   : "No documents yet"}
               </p>
               {!search && viewFilter === "all" && (
@@ -319,7 +351,8 @@ export default function DashboardPage() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {filtered.map((doc) => (
                 <div
                   key={doc.id}
@@ -394,8 +427,9 @@ export default function DashboardPage() {
                         <div
                           key={i}
                           className="w-6 h-6 rounded-full bg-[var(--primary)] border-2 border-[var(--card)] flex items-center justify-center text-[10px] text-white font-medium shadow-[var(--shadow-xs)]"
+                          title={c.name || c.email || "Collaborator"}
                         >
-                          {i + 1}
+                          {(c.name || c.email || "?").charAt(0).toUpperCase()}
                         </div>
                       ))}
                       {doc.collaborators.length > 3 && (
@@ -408,6 +442,18 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+            {hasMore && (
+              <div className="text-center">
+                <button
+                  onClick={() => fetchDocuments(page + 1)}
+                  disabled={loadingMore}
+                  className="px-6 py-2.5 text-sm font-medium border border-[var(--border)] rounded-xl hover:bg-[var(--muted)] transition-colors disabled:opacity-50"
+                >
+                  {loadingMore ? "Loading..." : "Load more"}
+                </button>
+              </div>
+            )}
+            </>
           )}
         </main>
       </div>
