@@ -63,23 +63,27 @@ export function ShareDialog({ document, onClose, onUpdate }: ShareDialogProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-[var(--background)] rounded-xl shadow-xl w-full max-w-md mx-4">
-        {/* Header */}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-[var(--card)] rounded-2xl shadow-[var(--shadow-xl)] w-full max-w-md overflow-hidden animate-scale-in">
+        <div className="h-1 bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)]" />
+
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
           <h2 className="text-lg font-semibold">Share Document</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-[var(--muted)]"
+            className="p-1.5 rounded-full hover:bg-[var(--muted)] transition-colors"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        <div className="px-6 py-4 space-y-4">
+        <div className="px-6 py-5 space-y-5">
           {/* Add collaborator */}
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-medium mb-2">
               Invite by email
             </label>
             <div className="flex gap-2">
@@ -88,12 +92,12 @@ export function ShareDialog({ document, onClose, onUpdate }: ShareDialogProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@example.com"
-                className="flex-1 px-3 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                className="flex-1 px-3 py-2 text-sm border border-[var(--border)] rounded-xl bg-[var(--surface-2)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]/50 focus:border-[var(--ring)] transition-shadow"
               />
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as "editor" | "viewer")}
-                className="px-2 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--background)]"
+                className="px-2 py-2 text-sm border border-[var(--border)] rounded-xl bg-[var(--surface-2)]"
               >
                 <option value="editor">Editor</option>
                 <option value="viewer">Viewer</option>
@@ -101,30 +105,30 @@ export function ShareDialog({ document, onClose, onUpdate }: ShareDialogProps) {
               <button
                 onClick={handleAddCollaborator}
                 disabled={adding || !email.trim()}
-                className="px-4 py-2 text-sm bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-white rounded-xl bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 disabled:opacity-50 transition-opacity"
               >
                 {adding ? "..." : "Add"}
               </button>
             </div>
             {error && (
-              <p className="text-xs text-red-500 mt-1">{error}</p>
+              <p className="text-xs text-[var(--destructive)] mt-1.5">{error}</p>
             )}
           </div>
 
           {/* Collaborators list */}
           {document.collaborators.length > 0 && (
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-2">
                 Collaborators
               </label>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {document.collaborators.map((c, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between px-3 py-2 bg-[var(--muted)] rounded-lg text-sm"
+                    className="flex items-center justify-between px-3 py-2.5 bg-[var(--surface-2)] rounded-xl text-sm"
                   >
                     <span>{c.userId}</span>
-                    <span className="text-[var(--muted-foreground)] capitalize">
+                    <span className="text-[var(--muted-foreground)] capitalize text-xs bg-[var(--muted)] px-2 py-0.5 rounded-full">
                       {c.role}
                     </span>
                   </div>
@@ -135,12 +139,12 @@ export function ShareDialog({ document, onClose, onUpdate }: ShareDialogProps) {
 
           {/* Public toggle */}
           <div className="flex items-center justify-between py-3 border-t border-[var(--border)]">
-            <div className="flex items-center gap-2">
-              {document.isPublic ? (
-                <Globe size={18} className="text-[var(--primary)]" />
-              ) : (
-                <Lock size={18} className="text-[var(--muted-foreground)]" />
-              )}
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                document.isPublic ? "bg-[var(--primary)]/10 text-[var(--primary)]" : "bg-[var(--muted)] text-[var(--muted-foreground)]"
+              }`}>
+                {document.isPublic ? <Globe size={18} /> : <Lock size={18} />}
+              </div>
               <div>
                 <p className="text-sm font-medium">
                   {document.isPublic ? "Public" : "Private"}
@@ -148,15 +152,22 @@ export function ShareDialog({ document, onClose, onUpdate }: ShareDialogProps) {
                 <p className="text-xs text-[var(--muted-foreground)]">
                   {document.isPublic
                     ? "Anyone with the link can view"
-                    : "Only invited collaborators can access"}
+                    : "Only invited collaborators"}
                 </p>
               </div>
             </div>
+            {/* Toggle switch */}
             <button
               onClick={handleTogglePublic}
-              className="px-3 py-1 text-sm border border-[var(--border)] rounded-lg hover:bg-[var(--muted)]"
+              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+                document.isPublic ? "bg-[var(--primary)]" : "bg-[var(--input)]"
+              }`}
             >
-              {document.isPublic ? "Make Private" : "Make Public"}
+              <span
+                className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${
+                  document.isPublic ? "translate-x-5.5" : "translate-x-0.5"
+                }`}
+              />
             </button>
           </div>
 
@@ -165,13 +176,17 @@ export function ShareDialog({ document, onClose, onUpdate }: ShareDialogProps) {
             <input
               readOnly
               value={shareUrl}
-              className="flex-1 px-3 py-2 text-sm border border-[var(--border)] rounded-lg bg-[var(--muted)] truncate"
+              className="flex-1 px-3 py-2 text-sm border border-[var(--border)] rounded-xl bg-[var(--surface-2)] truncate"
             />
             <button
               onClick={handleCopyLink}
-              className="flex items-center gap-1 px-3 py-2 text-sm border border-[var(--border)] rounded-lg hover:bg-[var(--muted)]"
+              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border rounded-xl transition-all ${
+                copied
+                  ? "border-[var(--success)] text-[var(--success)] bg-[var(--success)]/10"
+                  : "border-[var(--border)] hover:bg-[var(--muted)]"
+              }`}
             >
-              {copied ? <Check size={16} /> : <Copy size={16} />}
+              {copied ? <Check size={14} /> : <Copy size={14} />}
               {copied ? "Copied" : "Copy"}
             </button>
           </div>
