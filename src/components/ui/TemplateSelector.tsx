@@ -35,15 +35,19 @@ export function TemplateSelector({ onSelect, onClose }: TemplateSelectorProps) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="template-selector-title"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="bg-[var(--card)] rounded-2xl shadow-[var(--shadow-xl)] w-full max-w-lg overflow-hidden animate-scale-in">
         <div className="h-1 bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)]" />
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
-          <h2 className="text-lg font-semibold">Choose a Template</h2>
+          <h2 id="template-selector-title" className="text-lg font-semibold">Choose a Template</h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-full hover:bg-[var(--muted)] transition-colors"
+            aria-label="Close template selector"
           >
             <X size={18} />
           </button>

@@ -1,40 +1,70 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { ObjectId } from "mongodb";
-import { authOptions } from "@/lib/auth";
 import {
   getDocumentsCollection,
   getVersionsCollection,
 } from "@/lib/db/collections";
+import {
+  requireAuth,
+  validateObjectId,
+  requireDocumentAccess,
+  applyRateLimit,
+  getRateLimitKey,
+} from "@/lib/api/helpers";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string; versionId: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const { session, error: authError } = await requireAuth();
+    if (authError) return authError;
 
-  const { id, versionId } = await params;
+    const rateLimited = applyRateLimit(getRateLimitKey(request, session.user.id));
+    if (rateLimited) return rateLimited;
 
-  const versions = await getVersionsCollection();
-  const version = await versions.findOne({ _id: new ObjectId(versionId) });
+    const { id, versionId } = await params;
+    const idError = validateObjectId(id);
+    if (idError) return idError;
+    const versionIdError = validateObjectId(versionId);
+    if (versionIdError) return versionIdError;
 
-  if (!version || version.documentId.toString() !== id) {
-    return NextResponse.json({ error: "Version not found" }, { status: 404 });
-  }
+    const { error: accessError } = await requireDocumentAccess(
+      id,
+      session.user.id,
+      "editor"
+    );
+    if (accessError) return accessError;
 
-  const docs = await getDocumentsCollection();
-  await docs.updateOne(
-    { _id: new ObjectId(id) },
-    {
-      $set: {
-        ydocState: version.snapshot,
-        updatedAt: new Date(),
-      },
+    const versions = await getVersionsCollection();
+    const version = await versions.findOne({
+      _id: new ObjectId(versionId),
+    });
+
+    if (!version || version.documentId.toString() !== id) {
+      return NextResponse.json(
+        { error: "Version not found" },
+        { status: 404 }
+      );
     }
-  );
 
-  return NextResponse.json({ success: true });
+    const docs = await getDocumentsCollection();
+    await docs.updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          ydocState: version.snapshot,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("[POST /api/documents/:id/versions/:versionId/restore]", err);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
