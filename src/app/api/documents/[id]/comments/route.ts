@@ -4,6 +4,7 @@ import {
   getCommentsCollection,
   getUsersCollection,
 } from "@/lib/db/collections";
+import { logActivity } from "@/lib/db/activity";
 import {
   requireAuth,
   validateObjectId,
@@ -123,6 +124,8 @@ export async function POST(
       resolved: false,
       createdAt: new Date(),
     });
+
+    await logActivity(new ObjectId(id), new ObjectId(session.user.id), "commented");
 
     return NextResponse.json(
       { id: result.insertedId.toString() },

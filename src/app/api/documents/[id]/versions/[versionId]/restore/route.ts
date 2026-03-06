@@ -4,6 +4,7 @@ import {
   getDocumentsCollection,
   getVersionsCollection,
 } from "@/lib/db/collections";
+import { logActivity } from "@/lib/db/activity";
 import {
   requireAuth,
   validateObjectId,
@@ -58,6 +59,8 @@ export async function POST(
         },
       }
     );
+
+    await logActivity(new ObjectId(id), new ObjectId(session.user.id), "version_restored", { versionId });
 
     return NextResponse.json({ success: true });
   } catch (err) {

@@ -32,9 +32,9 @@ export async function PUT(
     if (accessError) return accessError;
 
     const { tags } = await request.json();
-    if (!Array.isArray(tags)) {
+    if (!Array.isArray(tags) || tags.length > 20 || tags.some((t: unknown) => typeof t !== "string" || t.length > 50)) {
       return NextResponse.json(
-        { error: "tags must be an array" },
+        { error: "Tags must be an array of up to 20 strings (max 50 chars each)" },
         { status: 400 }
       );
     }

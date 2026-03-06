@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getDocumentsCollection, getUsersCollection } from "@/lib/db/collections";
-import { createNotification } from "@/lib/db/activity";
+import { createNotification, logActivity } from "@/lib/db/activity";
 import {
   requireAuth,
   validateObjectId,
@@ -32,15 +32,37 @@ export async function GET(
     );
     if (accessError) return accessError;
 
+    // Resolve collaborator names/emails
+    const collabs = doc.collaborators || [];
+    let collaboratorsData = collabs.map((c) => ({
+      userId: c.userId.toString(),
+      role: c.role,
+      addedAt: c.addedAt.toISOString(),
+      email: "",
+      name: "",
+    }));
+
+    if (collabs.length > 0) {
+      const users = await getUsersCollection();
+      const collabUsers = await users
+        .find({ _id: { $in: collabs.map((c) => c.userId) } })
+        .project({ email: 1, name: 1 })
+        .toArray();
+      const userMap = new Map(
+        collabUsers.map((u) => [u._id!.toString(), { email: u.email, name: u.name }])
+      );
+      collaboratorsData = collaboratorsData.map((c) => ({
+        ...c,
+        email: userMap.get(c.userId)?.email || "",
+        name: userMap.get(c.userId)?.name || "",
+      }));
+    }
+
     return NextResponse.json({
       id: doc._id.toString(),
       title: doc.title,
       ownerId: doc.ownerId.toString(),
-      collaborators: (doc.collaborators || []).map((c) => ({
-        userId: c.userId.toString(),
-        role: c.role,
-        addedAt: c.addedAt.toISOString(),
-      })),
+      collaborators: collaboratorsData,
       createdAt: doc.createdAt.toISOString(),
       updatedAt: doc.updatedAt.toISOString(),
       isPublic: doc.isPublic,
@@ -82,7 +104,15 @@ export async function PATCH(
     const update: Record<string, unknown> = {};
     const setFields: Record<string, unknown> = { updatedAt: new Date() };
 
-    if (body.title !== undefined) setFields.title = body.title;
+    if (body.title !== undefined) {
+      if (typeof body.title !== "string" || body.title.length > 200) {
+        return NextResponse.json(
+          { error: "Title must be a string under 200 characters" },
+          { status: 400 }
+        );
+      }
+      setFields.title = body.title;
+    }
     if (body.isPublic !== undefined) setFields.isPublic = body.isPublic;
 
     // Handle adding a collaborator
@@ -145,6 +175,13 @@ export async function PATCH(
     update.$set = setFields;
     await docs.updateOne({ _id: new ObjectId(id) }, update);
 
+    const userId = new ObjectId(session.user.id);
+    if (body.addCollaborator) {
+      await logActivity(new ObjectId(id), userId, "shared", { email: body.addCollaborator.email, role: body.addCollaborator.role });
+    } else if (body.title !== undefined || body.isPublic !== undefined) {
+      await logActivity(new ObjectId(id), userId, "edited");
+    }
+
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[PATCH /api/documents/:id]", err);
@@ -182,6 +219,8 @@ export async function DELETE(
       { _id: new ObjectId(id) },
       { $set: { isDeleted: true, updatedAt: new Date() } }
     );
+
+    await logActivity(new ObjectId(id), new ObjectId(session.user.id), "deleted");
 
     return NextResponse.json({ success: true });
   } catch (err) {

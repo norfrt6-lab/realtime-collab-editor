@@ -40,7 +40,7 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        threadId: `thread-${Date.now()}`,
+        threadId: `thread-${crypto.randomUUID()}`,
         content: newComment,
       }),
     });

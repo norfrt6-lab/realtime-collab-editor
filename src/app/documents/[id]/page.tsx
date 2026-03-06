@@ -350,7 +350,7 @@ export default function EditorPage() {
                   templateAppliedRef.current = true;
                   const template = TEMPLATES.find((t) => t.id === templateId);
                   if (template && editor.isEmpty) {
-                    editor.commands.setContent(template.content);
+                    editor.commands.setContent(JSON.parse(JSON.stringify(template.content)));
                   }
                 }
               }}
