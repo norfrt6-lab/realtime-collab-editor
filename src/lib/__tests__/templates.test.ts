@@ -19,13 +19,16 @@ describe("TEMPLATES", () => {
   it("blank template has empty content", () => {
     const blank = TEMPLATES.find((t) => t.id === "blank");
     expect(blank).toBeDefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((blank!.content.content as any[]).length).toBe(1);
   });
 
   it("meeting notes template has headings", () => {
     const meeting = TEMPLATES.find((t) => t.id === "meeting-notes");
     expect(meeting).toBeDefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const headings = (meeting!.content.content as any[]).filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (n: any) => n.type === "heading"
     );
     expect(headings.length).toBeGreaterThan(0);
@@ -34,7 +37,9 @@ describe("TEMPLATES", () => {
   it("project brief template has table", () => {
     const brief = TEMPLATES.find((t) => t.id === "project-brief");
     expect(brief).toBeDefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tables = (brief!.content.content as any[]).filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (n: any) => n.type === "table"
     );
     expect(tables.length).toBeGreaterThan(0);
@@ -43,7 +48,9 @@ describe("TEMPLATES", () => {
   it("technical spec template has code block", () => {
     const spec = TEMPLATES.find((t) => t.id === "technical-spec");
     expect(spec).toBeDefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const codeBlocks = (spec!.content.content as any[]).filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (n: any) => n.type === "codeBlock"
     );
     expect(codeBlocks.length).toBeGreaterThan(0);

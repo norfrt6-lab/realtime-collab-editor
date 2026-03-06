@@ -32,7 +32,7 @@ export async function GET() {
     id: doc._id.toString(),
     title: doc.title,
     ownerId: doc.ownerId.toString(),
-    collaborators: (doc.collaborators || []).map((c: any) => ({
+    collaborators: (doc.collaborators || []).map((c: { userId: ObjectId; role: string; addedAt: Date }) => ({
       userId: c.userId.toString(),
       role: c.role,
       addedAt: c.addedAt.toISOString(),
@@ -71,6 +71,7 @@ export async function POST(request: Request) {
     updatedAt: now,
     isPublic: false,
     isDeleted: false,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 
   // Log activity

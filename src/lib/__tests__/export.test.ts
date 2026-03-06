@@ -8,6 +8,7 @@ function createMockEditor(text: string) {
         textContent: text,
       },
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
 

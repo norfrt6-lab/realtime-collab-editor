@@ -55,7 +55,7 @@ export async function GET(request: Request) {
     id: doc._id.toString(),
     title: doc.title,
     ownerId: doc.ownerId.toString(),
-    collaborators: (doc.collaborators || []).map((c: any) => ({
+    collaborators: (doc.collaborators || []).map((c: { userId: ObjectId; role: string; addedAt: Date }) => ({
       userId: c.userId.toString(),
       role: c.role,
       addedAt: c.addedAt.toISOString(),
