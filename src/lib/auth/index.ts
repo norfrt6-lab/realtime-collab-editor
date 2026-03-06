@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const users = await getUsersCollection();
-        const user = await users.findOne({ email: credentials.email });
+        const user = await users.findOne({ email: credentials.email.toLowerCase() });
 
         if (!user) return null;
 

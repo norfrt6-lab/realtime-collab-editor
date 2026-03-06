@@ -36,7 +36,7 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
   async function handleAddComment() {
     if (!newComment.trim()) return;
 
-    await fetch(`/api/documents/${documentId}/comments`, {
+    const res = await fetch(`/api/documents/${documentId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -45,14 +45,16 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
       }),
     });
 
-    setNewComment("");
-    fetchComments();
+    if (res.ok) {
+      setNewComment("");
+      fetchComments();
+    }
   }
 
   async function handleReply(threadId: string, parentId: string) {
     if (!replyText.trim()) return;
 
-    await fetch(`/api/documents/${documentId}/comments`, {
+    const res = await fetch(`/api/documents/${documentId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -62,18 +64,22 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
       }),
     });
 
-    setReplyTo(null);
-    setReplyText("");
-    fetchComments();
+    if (res.ok) {
+      setReplyTo(null);
+      setReplyText("");
+      fetchComments();
+    }
   }
 
   async function handleResolve(commentId: string, resolved: boolean) {
-    await fetch(`/api/documents/${documentId}/comments`, {
+    const res = await fetch(`/api/documents/${documentId}/comments`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ commentId, resolved }),
     });
-    fetchComments();
+    if (res.ok) {
+      fetchComments();
+    }
   }
 
   const threads = comments.reduce<Record<string, CommentData[]>>(

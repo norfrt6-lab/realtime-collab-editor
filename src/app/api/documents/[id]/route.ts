@@ -126,7 +126,7 @@ export async function PATCH(
       }
 
       const users = await getUsersCollection();
-      const targetUser = await users.findOne({ email });
+      const targetUser = await users.findOne({ email: email.toLowerCase() });
       if (!targetUser) {
         return NextResponse.json(
           { error: "User not found with that email" },
