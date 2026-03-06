@@ -1,26 +1,50 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { ObjectId } from "mongodb";
-import { authOptions } from "@/lib/auth";
 import { getDocumentsCollection } from "@/lib/db/collections";
+import {
+  requireAuth,
+  validateObjectId,
+  requireDocumentAccess,
+  applyRateLimit,
+  getRateLimitKey,
+} from "@/lib/api/helpers";
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const { session, error: authError } = await requireAuth();
+    if (authError) return authError;
+
+    const rateLimited = applyRateLimit(getRateLimitKey(request, session.user.id));
+    if (rateLimited) return rateLimited;
+
+    const { id } = await params;
+    const idError = validateObjectId(id);
+    if (idError) return idError;
+
+    const { error: accessError } = await requireDocumentAccess(
+      id,
+      session.user.id,
+      "editor"
+    );
+    if (accessError) return accessError;
+
+    const { folder } = await request.json();
+    const docs = await getDocumentsCollection();
+
+    await docs.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { folder: folder || null, updatedAt: new Date() } }
+    );
+
+    return NextResponse.json({ folder });
+  } catch (err) {
+    console.error("[PUT /api/documents/:id/folder]", err);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
-
-  const { id } = await params;
-  const { folder } = await request.json();
-
-  const docs = await getDocumentsCollection();
-  await docs.updateOne(
-    { _id: new ObjectId(id) },
-    { $set: { folder: folder || null, updatedAt: new Date() } }
-  );
-
-  return NextResponse.json({ folder });
 }

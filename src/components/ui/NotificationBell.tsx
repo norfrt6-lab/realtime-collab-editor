@@ -75,9 +75,11 @@ export function NotificationBell() {
       <button
         onClick={() => setOpen(!open)}
         className="relative p-2 rounded-full hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-        title="Notifications"
+        aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+        aria-expanded={open}
+        aria-haspopup="true"
       >
-        <Bell size={18} />
+        <Bell size={18} aria-hidden="true" />
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-[var(--destructive)] text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-[var(--shadow-sm)]">
             {unreadCount > 9 ? "9+" : unreadCount}
@@ -102,6 +104,7 @@ export function NotificationBell() {
               <button
                 onClick={() => setOpen(false)}
                 className="p-1 rounded-full hover:bg-[var(--muted)] transition-colors"
+                aria-label="Close notifications"
               >
                 <X size={14} />
               </button>
