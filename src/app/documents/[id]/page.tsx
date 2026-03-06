@@ -3,14 +3,26 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowLeft, Share2, History, MessageSquare } from "lucide-react";
+import {
+  ArrowLeft,
+  Share2,
+  History,
+  MessageSquare,
+  Activity,
+  Tag,
+  Folder,
+} from "lucide-react";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import type * as Y from "yjs";
 
 import { CollabEditor } from "@/components/editor/CollabEditor";
+import { ExportMenu } from "@/components/editor/ExportMenu";
+import { WordCount } from "@/components/editor/WordCount";
 import { ActiveUsers } from "@/components/presence/ActiveUsers";
+import { TypingIndicator } from "@/components/presence/TypingIndicator";
 import { VersionHistoryPanel } from "@/components/version-history/VersionHistoryPanel";
 import { CommentsPanel } from "@/components/comments/CommentsPanel";
+import { ActivityPanel } from "@/components/editor/ActivityPanel";
 import { ShareDialog } from "@/components/ui/ShareDialog";
 import {
   createCollaborationProvider,
@@ -29,10 +41,16 @@ export default function EditorPage() {
   const [loading, setLoading] = useState(true);
   const [showVersions, setShowVersions] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [tagInput, setTagInput] = useState("");
+  const [showTagInput, setShowTagInput] = useState(false);
+  const [folderInput, setFolderInput] = useState("");
+  const [showFolderInput, setShowFolderInput] = useState(false);
 
   const providerRef = useRef<HocuspocusProvider | null>(null);
   const ydocRef = useRef<Y.Doc | null>(null);
+  const editorRef = useRef<import("@tiptap/react").Editor | null>(null);
 
   // Fetch document metadata
   const fetchDoc = useCallback(async () => {
@@ -87,6 +105,57 @@ export default function EditorPage() {
     }
   }
 
+  async function handleAddTag() {
+    if (!tagInput.trim() || !doc) return;
+    const newTags = [...(doc.tags || []), tagInput.trim()];
+    await fetch(`/api/documents/${documentId}/tags`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tags: newTags }),
+    });
+    setDoc({ ...doc, tags: newTags });
+    setTagInput("");
+    setShowTagInput(false);
+  }
+
+  async function handleRemoveTag(tag: string) {
+    if (!doc) return;
+    const newTags = (doc.tags || []).filter((t) => t !== tag);
+    await fetch(`/api/documents/${documentId}/tags`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tags: newTags }),
+    });
+    setDoc({ ...doc, tags: newTags });
+  }
+
+  async function handleSetFolder() {
+    if (!doc) return;
+    await fetch(`/api/documents/${documentId}/folder`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder: folderInput.trim() || null }),
+    });
+    setDoc({ ...doc, folder: folderInput.trim() || undefined });
+    setShowFolderInput(false);
+  }
+
+  // Keyboard shortcut: Ctrl+S for manual version save
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        fetch(`/api/documents/${documentId}/versions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ label: "Quick save" }),
+        });
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [documentId]);
+
   if (loading || !session?.user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -130,8 +199,14 @@ export default function EditorPage() {
             />
           )}
 
+          <ExportMenu editor={editorRef.current} documentTitle={title} />
+
           <button
-            onClick={() => setShowComments((v) => !v)}
+            onClick={() => {
+              setShowComments((v) => !v);
+              setShowVersions(false);
+              setShowActivity(false);
+            }}
             className={`p-1.5 rounded-lg hover:bg-[var(--muted)] ${
               showComments ? "bg-[var(--accent)] text-[var(--primary)]" : ""
             }`}
@@ -141,13 +216,31 @@ export default function EditorPage() {
           </button>
 
           <button
-            onClick={() => setShowVersions((v) => !v)}
+            onClick={() => {
+              setShowVersions((v) => !v);
+              setShowComments(false);
+              setShowActivity(false);
+            }}
             className={`p-1.5 rounded-lg hover:bg-[var(--muted)] ${
               showVersions ? "bg-[var(--accent)] text-[var(--primary)]" : ""
             }`}
-            title="Version History"
+            title="Version History (Ctrl+S to save)"
           >
             <History size={20} />
+          </button>
+
+          <button
+            onClick={() => {
+              setShowActivity((v) => !v);
+              setShowComments(false);
+              setShowVersions(false);
+            }}
+            className={`p-1.5 rounded-lg hover:bg-[var(--muted)] ${
+              showActivity ? "bg-[var(--accent)] text-[var(--primary)]" : ""
+            }`}
+            title="Activity Feed"
+          >
+            <Activity size={20} />
           </button>
 
           <button
@@ -160,6 +253,86 @@ export default function EditorPage() {
         </div>
       </header>
 
+      {/* Document metadata bar */}
+      <div className="flex items-center gap-3 px-4 py-1.5 border-b border-[var(--border)] text-xs">
+        {/* Folder */}
+        <div className="flex items-center gap-1">
+          <Folder size={12} className="text-[var(--muted-foreground)]" />
+          {showFolderInput ? (
+            <input
+              value={folderInput}
+              onChange={(e) => setFolderInput(e.target.value)}
+              onBlur={handleSetFolder}
+              onKeyDown={(e) => e.key === "Enter" && handleSetFolder()}
+              placeholder="Folder name..."
+              className="px-1 py-0.5 text-xs border border-[var(--border)] rounded bg-[var(--background)] w-24"
+              autoFocus
+            />
+          ) : (
+            <button
+              onClick={() => {
+                setFolderInput(doc?.folder || "");
+                setShowFolderInput(true);
+              }}
+              className="text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            >
+              {doc?.folder || "Set folder"}
+            </button>
+          )}
+        </div>
+
+        <div className="w-px h-3 bg-[var(--border)]" />
+
+        {/* Tags */}
+        <div className="flex items-center gap-1 flex-wrap">
+          <Tag size={12} className="text-[var(--muted-foreground)]" />
+          {(doc?.tags || []).map((tag) => (
+            <span
+              key={tag}
+              className="px-1.5 py-0.5 bg-[var(--muted)] rounded-full flex items-center gap-0.5 group"
+            >
+              {tag}
+              <button
+                onClick={() => handleRemoveTag(tag)}
+                className="text-[var(--muted-foreground)] hover:text-red-500 hidden group-hover:inline"
+              >
+                x
+              </button>
+            </span>
+          ))}
+          {showTagInput ? (
+            <input
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onBlur={handleAddTag}
+              onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
+              placeholder="Tag..."
+              className="px-1 py-0.5 text-xs border border-[var(--border)] rounded bg-[var(--background)] w-16"
+              autoFocus
+            />
+          ) : (
+            <button
+              onClick={() => setShowTagInput(true)}
+              className="text-[var(--muted-foreground)] hover:text-[var(--primary)]"
+            >
+              + Add tag
+            </button>
+          )}
+        </div>
+
+        <div className="ml-auto">
+          <WordCount editor={editorRef.current} />
+        </div>
+      </div>
+
+      {/* Typing indicator */}
+      {providerRef.current && (
+        <TypingIndicator
+          provider={providerRef.current}
+          currentUserName={userInfo.name}
+        />
+      )}
+
       {/* Main content */}
       <div className="flex flex-1 min-h-0">
         {/* Editor */}
@@ -169,6 +342,9 @@ export default function EditorPage() {
               ydoc={ydocRef.current}
               provider={providerRef.current}
               user={userInfo}
+              onEditorReady={(editor) => {
+                editorRef.current = editor;
+              }}
             />
           ) : (
             <div className="flex items-center justify-center flex-1">
@@ -191,6 +367,13 @@ export default function EditorPage() {
           <CommentsPanel
             documentId={documentId}
             onClose={() => setShowComments(false)}
+          />
+        )}
+
+        {showActivity && (
+          <ActivityPanel
+            documentId={documentId}
+            onClose={() => setShowActivity(false)}
           />
         )}
       </div>

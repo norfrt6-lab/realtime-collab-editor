@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
@@ -26,10 +26,19 @@ interface CollabEditorProps {
   ydoc: Y.Doc;
   provider: HocuspocusProvider;
   user: { name: string; color: string };
+  onEditorReady?: (editor: Editor) => void;
 }
 
-export function CollabEditor({ ydoc, provider, user }: CollabEditorProps) {
-  const [status, setStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
+export function CollabEditor({
+  ydoc,
+  provider,
+  user,
+  onEditorReady,
+}: CollabEditorProps) {
+  const [status, setStatus] = useState<
+    "connecting" | "connected" | "disconnected"
+  >("connecting");
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const onStatus = ({ status: s }: { status: string }) => {
@@ -42,10 +51,23 @@ export function CollabEditor({ ydoc, provider, user }: CollabEditorProps) {
     };
   }, [provider]);
 
+  // Set typing awareness on editor update
+  const handleTyping = useCallback(() => {
+    provider.setAwarenessField("isTyping", true);
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      provider.setAwarenessField("isTyping", false);
+    }, 2000);
+  }, [provider]);
+
   const extensions = useMemo(
     () => [
       StarterKit.configure({
-        history: false, // Handled by Y.js
+        history: false,
       }),
       Collaboration.configure({
         document: ydoc,
@@ -55,7 +77,8 @@ export function CollabEditor({ ydoc, provider, user }: CollabEditorProps) {
         user,
       }),
       Placeholder.configure({
-        placeholder: "Start typing...",
+        placeholder:
+          'Start typing... Use "/" for slash commands',
       }),
       CharacterCount,
       Highlight.configure({ multicolor: true }),
@@ -85,7 +108,17 @@ export function CollabEditor({ ydoc, provider, user }: CollabEditorProps) {
         class: "tiptap prose prose-sm max-w-none focus:outline-none",
       },
     },
+    onUpdate: () => {
+      handleTyping();
+    },
   });
+
+  // Notify parent when editor is ready
+  useEffect(() => {
+    if (editor && onEditorReady) {
+      onEditorReady(editor);
+    }
+  }, [editor, onEditorReady]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
