@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   ArrowLeft,
@@ -31,6 +31,7 @@ import {
   createCollaborationProvider,
   getUserColor,
 } from "@/lib/collaboration/provider";
+import { TEMPLATES } from "@/lib/templates";
 import type { DocumentMeta } from "@/types";
 
 function getTagColor(tag: string) {
@@ -43,9 +44,11 @@ function getTagColor(tag: string) {
 export default function EditorPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
   const { toast } = useToast();
   const documentId = params.id as string;
+  const templateAppliedRef = useRef(false);
 
   const [doc, setDoc] = useState<DocumentMeta | null>(null);
   const [title, setTitle] = useState("");
@@ -342,6 +345,14 @@ export default function EditorPage() {
               user={userInfo}
               onEditorReady={(editor) => {
                 editorRef.current = editor;
+                const templateId = searchParams.get("template");
+                if (templateId && !templateAppliedRef.current) {
+                  templateAppliedRef.current = true;
+                  const template = TEMPLATES.find((t) => t.id === templateId);
+                  if (template && editor.isEmpty) {
+                    editor.commands.setContent(template.content);
+                  }
+                }
               }}
             />
           ) : (

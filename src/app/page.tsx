@@ -95,7 +95,7 @@ export default function DashboardPage() {
 
     if (res.ok) {
       const { id } = await res.json();
-      router.push(`/documents/${id}`);
+      router.push(`/documents/${id}?template=${template.id}`);
     }
     setShowTemplates(false);
   }

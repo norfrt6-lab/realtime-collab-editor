@@ -33,6 +33,10 @@ export function ShareDialog({ document, onClose, onUpdate }: ShareDialogProps) {
 
   async function handleAddCollaborator() {
     if (!email.trim()) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Please enter a valid email address");
+      return;
+    }
     setError("");
     setAdding(true);
 

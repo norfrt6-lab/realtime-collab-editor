@@ -1,7 +1,7 @@
 import type { ObjectId } from "mongodb";
 
 export interface User {
-  _id: ObjectId;
+  _id?: ObjectId;
   email: string;
   name: string;
   passwordHash: string;
@@ -16,7 +16,7 @@ export interface Collaborator {
 }
 
 export interface Document {
-  _id: ObjectId;
+  _id?: ObjectId;
   title: string;
   ownerId: ObjectId;
   collaborators: Collaborator[];
@@ -33,7 +33,7 @@ export interface Document {
 }
 
 export interface Version {
-  _id: ObjectId;
+  _id?: ObjectId;
   documentId: ObjectId;
   snapshot: Buffer;
   createdBy: ObjectId;
@@ -42,7 +42,7 @@ export interface Version {
 }
 
 export interface Comment {
-  _id: ObjectId;
+  _id?: ObjectId;
   documentId: ObjectId;
   threadId: string;
   content: string;
