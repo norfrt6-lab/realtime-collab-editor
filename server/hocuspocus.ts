@@ -59,24 +59,50 @@ const server = Server.configure({
   ],
 
   async onAuthenticate({ token, documentName }) {
-    // Validate JWT token and check document permissions
     if (!token) {
       throw new Error("Authentication required");
     }
 
-    // In production, decode and verify the JWT here.
-    // For now, accept any non-empty token for development.
+    // Validate token is a valid ObjectId (user ID)
+    if (!ObjectId.isValid(token)) {
+      throw new Error("Invalid authentication token");
+    }
+
     const db = await getMongoDb();
+
+    // Verify the user exists
+    const user = await db
+      .collection("users")
+      .findOne({ _id: new ObjectId(token) }, { projection: { name: 1 } });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Verify the document exists and user has access
     const doc = await db
       .collection("documents")
-      .findOne({ _id: new ObjectId(documentName) });
+      .findOne(
+        { _id: new ObjectId(documentName), isDeleted: { $ne: true } },
+        { projection: { ownerId: 1, collaborators: 1, isPublic: 1 } }
+      );
 
     if (!doc) {
       throw new Error("Document not found");
     }
 
+    const userId = new ObjectId(token);
+    const isOwner = doc.ownerId.equals(userId);
+    const isCollaborator = (doc.collaborators || []).some(
+      (c: { userId: ObjectId }) => c.userId.equals(userId)
+    );
+
+    if (!isOwner && !isCollaborator && !doc.isPublic) {
+      throw new Error("Access denied");
+    }
+
     return {
-      user: { id: token },
+      user: { id: token, name: user.name },
     };
   },
 
