@@ -69,6 +69,14 @@ export async function POST(request: Request) {
     if (rateLimited) return rateLimited;
 
     const { title, templateId } = await request.json();
+
+    if (title && (typeof title !== "string" || title.length > 200)) {
+      return NextResponse.json(
+        { error: "Title must be a string under 200 characters" },
+        { status: 400 }
+      );
+    }
+
     const docs = await getDocumentsCollection();
     const userId = new ObjectId(session.user.id);
 

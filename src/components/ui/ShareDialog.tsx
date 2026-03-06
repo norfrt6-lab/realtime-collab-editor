@@ -135,7 +135,7 @@ export function ShareDialog({ document, onClose, onUpdate }: ShareDialogProps) {
                     key={i}
                     className="flex items-center justify-between px-3 py-2.5 bg-[var(--surface-2)] rounded-xl text-sm"
                   >
-                    <span>{c.userId}</span>
+                    <span>{c.name || c.email || c.userId}</span>
                     <span className="text-[var(--muted-foreground)] capitalize text-xs bg-[var(--muted)] px-2 py-0.5 rounded-full">
                       {c.role}
                     </span>

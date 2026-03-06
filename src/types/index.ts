@@ -61,6 +61,8 @@ export interface DocumentMeta {
     userId: string;
     role: "editor" | "viewer";
     addedAt: string;
+    email?: string;
+    name?: string;
   }[];
   createdAt: string;
   updatedAt: string;

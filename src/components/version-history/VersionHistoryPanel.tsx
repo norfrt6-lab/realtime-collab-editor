@@ -47,12 +47,14 @@ export function VersionHistoryPanel({
   }
 
   async function handleRestore(versionId: string) {
-    await fetch(
+    const res = await fetch(
       `/api/documents/${documentId}/versions/${versionId}/restore`,
       { method: "POST" }
     );
     setRestoreTarget(null);
-    window.location.reload();
+    if (res.ok) {
+      window.location.reload();
+    }
   }
 
   return (
