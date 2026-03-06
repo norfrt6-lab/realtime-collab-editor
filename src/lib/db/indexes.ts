@@ -14,6 +14,10 @@ export async function ensureIndexes(): Promise<void> {
     .collection("documents")
     .createIndex({ "collaborators.userId": 1 });
   await db.collection("documents").createIndex({ updatedAt: -1 });
+  await db.collection("documents").createIndex({ title: "text" }); // Full-text search
+  await db.collection("documents").createIndex({ tags: 1 });
+  await db.collection("documents").createIndex({ folder: 1 });
+  await db.collection("documents").createIndex({ starredBy: 1 });
 
   // Versions
   await db
@@ -27,4 +31,28 @@ export async function ensureIndexes(): Promise<void> {
   await db
     .collection("comments")
     .createIndex({ documentId: 1, createdAt: 1 });
+
+  // Activity
+  await db
+    .collection("activity")
+    .createIndex({ documentId: 1, createdAt: -1 });
+
+  // Notifications
+  await db
+    .collection("notifications")
+    .createIndex({ userId: 1, createdAt: -1 });
+  await db
+    .collection("notifications")
+    .createIndex({ userId: 1, read: 1 });
+
+  // Audit log
+  await db
+    .collection("audit_log")
+    .createIndex({ createdAt: -1 });
+  await db
+    .collection("audit_log")
+    .createIndex({ userId: 1, createdAt: -1 });
+  await db
+    .collection("audit_log")
+    .createIndex({ resource: 1, resourceId: 1 });
 }

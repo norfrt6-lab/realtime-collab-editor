@@ -17,6 +17,8 @@ describe("Type definitions", () => {
       createdAt: "2024-01-01T00:00:00Z",
       updatedAt: "2024-01-01T00:00:00Z",
       isPublic: false,
+      tags: ["project", "draft"],
+      isStarred: true,
     };
 
     expect(doc.id).toBe("123");

@@ -25,6 +25,11 @@ export interface Document {
   updatedAt: Date;
   isPublic: boolean;
   isDeleted: boolean;
+  folder?: string;
+  tags: string[];
+  starredBy: ObjectId[];
+  lastAccessedBy: { userId: ObjectId; at: Date }[];
+  templateId?: string;
 }
 
 export interface Version {
@@ -60,6 +65,9 @@ export interface DocumentMeta {
   createdAt: string;
   updatedAt: string;
   isPublic: boolean;
+  folder?: string;
+  tags: string[];
+  isStarred: boolean;
 }
 
 export interface VersionMeta {
