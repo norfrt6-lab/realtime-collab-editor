@@ -66,6 +66,7 @@ export async function POST(
     createdBy: new ObjectId(session.user.id),
     createdAt: new Date(),
     label: label || undefined,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 
   return NextResponse.json(

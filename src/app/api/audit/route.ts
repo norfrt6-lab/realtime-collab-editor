@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { ObjectId } from "mongodb";
 import { authOptions } from "@/lib/auth";
 import { getAuditLogCollection } from "@/lib/db/activity";
 
