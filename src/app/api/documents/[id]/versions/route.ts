@@ -4,6 +4,7 @@ import {
   getDocumentsCollection,
   getVersionsCollection,
 } from "@/lib/db/collections";
+import { logActivity } from "@/lib/db/activity";
 import {
   requireAuth,
   validateObjectId,
@@ -102,6 +103,8 @@ export async function POST(
       createdAt: new Date(),
       label: label || undefined,
     });
+
+    await logActivity(new ObjectId(id), new ObjectId(session.user.id), "version_saved", { label });
 
     return NextResponse.json(
       { id: result.insertedId.toString() },

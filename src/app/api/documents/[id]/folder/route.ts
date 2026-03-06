@@ -32,6 +32,14 @@ export async function PUT(
     if (accessError) return accessError;
 
     const { folder } = await request.json();
+
+    if (folder && (typeof folder !== "string" || folder.length > 100)) {
+      return NextResponse.json(
+        { error: "Folder name must be under 100 characters" },
+        { status: 400 }
+      );
+    }
+
     const docs = await getDocumentsCollection();
 
     await docs.updateOne(

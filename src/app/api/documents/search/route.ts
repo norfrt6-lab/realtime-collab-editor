@@ -30,7 +30,8 @@ export async function GET(request: Request) {
     };
 
     if (query) {
-      filter.title = { $regex: query, $options: "i" };
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.title = { $regex: escaped, $options: "i" };
     }
 
     if (folder) {
