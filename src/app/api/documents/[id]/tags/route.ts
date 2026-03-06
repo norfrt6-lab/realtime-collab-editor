@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getDocumentsCollection } from "@/lib/db/collections";
+import { logActivity } from "@/lib/db/activity";
 import {
   requireAuth,
   validateObjectId,
@@ -44,6 +45,8 @@ export async function PUT(
       { _id: new ObjectId(id) },
       { $set: { tags, updatedAt: new Date() } }
     );
+
+    await logActivity(new ObjectId(id), new ObjectId(session.user.id), "edited", { action: "tags_updated" });
 
     return NextResponse.json({ tags });
   } catch (err) {

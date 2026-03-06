@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getDocumentsCollection } from "@/lib/db/collections";
+import { logActivity } from "@/lib/db/activity";
 import {
   requireAuth,
   validateObjectId,
@@ -38,6 +39,8 @@ export async function POST(
       { _id: new ObjectId(id) },
       { $addToSet: { starredBy: userId } }
     );
+
+    await logActivity(new ObjectId(id), userId, "edited", { action: "starred" });
 
     return NextResponse.json({ starred: true });
   } catch (err) {
@@ -78,6 +81,8 @@ export async function DELETE(
       { _id: new ObjectId(id) },
       { $pull: { starredBy: userId } }
     );
+
+    await logActivity(new ObjectId(id), userId, "edited", { action: "unstarred" });
 
     return NextResponse.json({ starred: false });
   } catch (err) {
