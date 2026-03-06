@@ -84,6 +84,7 @@ export async function POST(
     parentId: parentId ? new ObjectId(parentId) : null,
     resolved: false,
     createdAt: new Date(),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 
   return NextResponse.json(
@@ -94,7 +95,7 @@ export async function POST(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  _context: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {

@@ -2,7 +2,6 @@ import { Server } from "@hocuspocus/server";
 import { Database } from "@hocuspocus/extension-database";
 import { Redis } from "@hocuspocus/extension-redis";
 import { MongoClient, ObjectId } from "mongodb";
-import IORedis from "ioredis";
 
 const MONGODB_URI =
   process.env.MONGODB_URI || "mongodb://localhost:27017/collab-editor";

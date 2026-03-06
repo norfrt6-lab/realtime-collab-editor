@@ -16,7 +16,7 @@ import {
   Quote,
   Minus,
   Link,
-  Image,
+  ImageIcon,
   Undo,
   Redo,
   Table,
@@ -152,7 +152,7 @@ export function Toolbar({ editor }: ToolbarProps) {
         isActive: editor.isActive("link"),
       },
       {
-        icon: <Image size={18} />,
+        icon: <ImageIcon size={18} />,
         title: "Image",
         action: () => {
           const url = window.prompt("Image URL:");

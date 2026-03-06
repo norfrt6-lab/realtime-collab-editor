@@ -40,6 +40,7 @@ export async function DELETE(
 
   await docs.updateOne(
     { _id: new ObjectId(id) },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     { $pull: { starredBy: userId } as any }
   );
 
