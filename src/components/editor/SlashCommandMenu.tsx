@@ -13,14 +13,16 @@ import {
   Code,
   Minus,
   Table,
-  Image,
+  ImageIcon,
   type LucideIcon,
 } from "lucide-react";
+import { InputModal } from "@/components/ui/InputModal";
 
 interface SlashCommandItem {
   title: string;
   description: string;
   icon: LucideIcon;
+  iconColor: string;
   command: (editor: Editor, range: Range) => void;
 }
 
@@ -29,6 +31,7 @@ const COMMANDS: SlashCommandItem[] = [
     title: "Heading 1",
     description: "Large section heading",
     icon: Heading1,
+    iconColor: "text-blue-500",
     command: (editor, range) =>
       editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run(),
   },
@@ -36,6 +39,7 @@ const COMMANDS: SlashCommandItem[] = [
     title: "Heading 2",
     description: "Medium section heading",
     icon: Heading2,
+    iconColor: "text-blue-400",
     command: (editor, range) =>
       editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run(),
   },
@@ -43,6 +47,7 @@ const COMMANDS: SlashCommandItem[] = [
     title: "Heading 3",
     description: "Small section heading",
     icon: Heading3,
+    iconColor: "text-blue-300",
     command: (editor, range) =>
       editor.chain().focus().deleteRange(range).setHeading({ level: 3 }).run(),
   },
@@ -50,6 +55,7 @@ const COMMANDS: SlashCommandItem[] = [
     title: "Bullet List",
     description: "Create an unordered list",
     icon: List,
+    iconColor: "text-green-500",
     command: (editor, range) =>
       editor.chain().focus().deleteRange(range).toggleBulletList().run(),
   },
@@ -57,6 +63,7 @@ const COMMANDS: SlashCommandItem[] = [
     title: "Numbered List",
     description: "Create an ordered list",
     icon: ListOrdered,
+    iconColor: "text-green-400",
     command: (editor, range) =>
       editor.chain().focus().deleteRange(range).toggleOrderedList().run(),
   },
@@ -64,6 +71,7 @@ const COMMANDS: SlashCommandItem[] = [
     title: "Task List",
     description: "Create a checklist",
     icon: ListChecks,
+    iconColor: "text-green-600",
     command: (editor, range) =>
       editor.chain().focus().deleteRange(range).toggleTaskList().run(),
   },
@@ -71,6 +79,7 @@ const COMMANDS: SlashCommandItem[] = [
     title: "Blockquote",
     description: "Add a quote block",
     icon: Quote,
+    iconColor: "text-purple-500",
     command: (editor, range) =>
       editor.chain().focus().deleteRange(range).toggleBlockquote().run(),
   },
@@ -78,6 +87,7 @@ const COMMANDS: SlashCommandItem[] = [
     title: "Code Block",
     description: "Add a code snippet",
     icon: Code,
+    iconColor: "text-orange-500",
     command: (editor, range) =>
       editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
   },
@@ -85,6 +95,7 @@ const COMMANDS: SlashCommandItem[] = [
     title: "Divider",
     description: "Insert a horizontal rule",
     icon: Minus,
+    iconColor: "text-gray-500",
     command: (editor, range) =>
       editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
   },
@@ -92,6 +103,7 @@ const COMMANDS: SlashCommandItem[] = [
     title: "Table",
     description: "Insert a 3x3 table",
     icon: Table,
+    iconColor: "text-cyan-500",
     command: (editor, range) =>
       editor
         .chain()
@@ -103,12 +115,10 @@ const COMMANDS: SlashCommandItem[] = [
   {
     title: "Image",
     description: "Insert an image from URL",
-    icon: Image,
-    command: (editor, range) => {
-      const url = window.prompt("Image URL:");
-      if (url) {
-        editor.chain().focus().deleteRange(range).setImage({ src: url }).run();
-      }
+    icon: ImageIcon,
+    iconColor: "text-pink-500",
+    command: () => {
+      // handled via modal in the component
     },
   },
 ];
@@ -126,6 +136,7 @@ export function SlashCommandMenu({
 }: SlashCommandMenuProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showImageModal, setShowImageModal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const filtered = COMMANDS.filter(
@@ -138,8 +149,12 @@ export function SlashCommandMenu({
     (index: number) => {
       const item = filtered[index];
       if (item) {
-        item.command(editor, range);
-        onClose();
+        if (item.title === "Image") {
+          setShowImageModal(true);
+        } else {
+          item.command(editor, range);
+          onClose();
+        }
       }
     },
     [filtered, editor, range, onClose]
@@ -172,47 +187,68 @@ export function SlashCommandMenu({
   }, [query]);
 
   return (
-    <div
-      ref={menuRef}
-      className="absolute z-50 w-72 bg-[var(--background)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden"
-    >
-      <div className="px-3 py-2 border-b border-[var(--border)]">
-        <input
-          type="text"
-          placeholder="Filter commands..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="w-full text-sm bg-transparent outline-none"
-          autoFocus
+    <>
+      <div
+        ref={menuRef}
+        className="absolute z-50 w-72 bg-[var(--popover)] border border-[var(--border)] rounded-xl shadow-[var(--shadow-lg)] overflow-hidden animate-slide-in-up"
+      >
+        <div className="px-3 py-2.5 border-b border-[var(--border)]">
+          <input
+            type="text"
+            placeholder="Filter commands..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="w-full text-sm bg-transparent outline-none placeholder:text-[var(--muted-foreground)]"
+            autoFocus
+          />
+        </div>
+        <div className="max-h-64 overflow-y-auto py-1">
+          {filtered.length === 0 ? (
+            <div className="px-3 py-4 text-sm text-[var(--muted-foreground)] text-center">
+              No matching commands
+            </div>
+          ) : (
+            filtered.map((item, index) => (
+              <button
+                key={item.title}
+                onClick={() => selectItem(index)}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors duration-100 ${
+                  index === selectedIndex
+                    ? "bg-[var(--accent)] border-l-2 border-[var(--primary)]"
+                    : "hover:bg-[var(--muted)] border-l-2 border-transparent"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg bg-[var(--surface-2)] flex items-center justify-center shrink-0 ${item.iconColor}`}>
+                  <item.icon size={16} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{item.title}</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">
+                    {item.description}
+                  </p>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
+      {showImageModal && (
+        <InputModal
+          title="Insert Image"
+          placeholder="https://example.com/image.jpg"
+          confirmLabel="Insert"
+          onConfirm={(url) => {
+            editor.chain().focus().deleteRange(range).setImage({ src: url }).run();
+            setShowImageModal(false);
+            onClose();
+          }}
+          onCancel={() => {
+            setShowImageModal(false);
+            onClose();
+          }}
         />
-      </div>
-      <div className="max-h-64 overflow-y-auto">
-        {filtered.length === 0 ? (
-          <div className="px-3 py-4 text-sm text-[var(--muted-foreground)] text-center">
-            No matching commands
-          </div>
-        ) : (
-          filtered.map((item, index) => (
-            <button
-              key={item.title}
-              onClick={() => selectItem(index)}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-[var(--muted)] ${
-                index === selectedIndex ? "bg-[var(--accent)]" : ""
-              }`}
-            >
-              <div className="w-8 h-8 rounded bg-[var(--muted)] flex items-center justify-center shrink-0">
-                <item.icon size={16} />
-              </div>
-              <div>
-                <p className="text-sm font-medium">{item.title}</p>
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  {item.description}
-                </p>
-              </div>
-            </button>
-          ))
-        )}
-      </div>
-    </div>
+      )}
+    </>
   );
 }

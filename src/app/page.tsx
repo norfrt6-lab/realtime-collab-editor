@@ -15,14 +15,25 @@ import {
   Clock,
   ChevronDown,
   LayoutTemplate,
+  Menu,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { DocumentMeta } from "@/types";
 import type { DocumentTemplate } from "@/lib/templates";
 import { NotificationBell } from "@/components/ui/NotificationBell";
 import { TemplateSelector } from "@/components/ui/TemplateSelector";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { MobileMenu } from "@/components/ui/MobileMenu";
 
 type ViewFilter = "all" | "starred" | "recent" | "folder" | "tag";
+
+function getTagColor(tag: string) {
+  let hash = 0;
+  for (let i = 0; i < tag.length; i++) hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = Math.abs(hash % 360);
+  return `hsl(${hue}, 65%, 50%)`;
+}
 
 export default function DashboardPage() {
   const { data: session } = useSession();
@@ -34,6 +45,8 @@ export default function DashboardPage() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const fetchDocuments = useCallback(async () => {
     const params = new URLSearchParams();
@@ -88,12 +101,11 @@ export default function DashboardPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this document?")) return;
-
     const res = await fetch(`/api/documents/${id}`, { method: "DELETE" });
     if (res.ok) {
       setDocuments((prev) => prev.filter((d) => d.id !== id));
     }
+    setDeleteTarget(null);
   }
 
   async function handleToggleStar(id: string, isStarred: boolean) {
@@ -106,11 +118,9 @@ export default function DashboardPage() {
     );
   }
 
-  // Extract unique folders and tags
   const folders = [...new Set(documents.map((d) => d.folder).filter(Boolean))] as string[];
   const tags = [...new Set(documents.flatMap((d) => d.tags || []))];
 
-  // Filter for recent (last 7 days)
   const filtered =
     viewFilter === "recent"
       ? documents.filter(
@@ -118,20 +128,98 @@ export default function DashboardPage() {
         )
       : documents;
 
+  const sidebarContent = (
+    <nav className="space-y-1">
+      {([
+        { filter: "all" as const, icon: <FileText size={16} />, label: "All Documents" },
+        { filter: "recent" as const, icon: <Clock size={16} />, label: "Recent" },
+        { filter: "starred" as const, icon: <Star size={16} />, label: "Starred" },
+      ]).map(({ filter, icon, label }) => (
+        <button
+          key={filter}
+          onClick={() => { setViewFilter(filter); setSelectedFolder(null); setSelectedTag(null); setMobileMenuOpen(false); }}
+          className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 ${
+            viewFilter === filter && !selectedFolder && !selectedTag
+              ? "bg-[var(--accent)] text-[var(--primary)] font-medium border-l-3 border-[var(--primary)]"
+              : "hover:bg-[var(--muted)] text-[var(--foreground)]"
+          }`}
+        >
+          {icon} {label}
+        </button>
+      ))}
+
+      {folders.length > 0 && (
+        <>
+          <div className="pt-5 pb-1.5 px-3 text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">
+            Folders
+          </div>
+          {folders.map((f) => (
+            <button
+              key={f}
+              onClick={() => { setViewFilter("folder"); setSelectedFolder(f); setSelectedTag(null); setMobileMenuOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg truncate transition-all duration-150 ${
+                viewFilter === "folder" && selectedFolder === f
+                  ? "bg-[var(--accent)] text-[var(--primary)] font-medium border-l-3 border-[var(--primary)]"
+                  : "hover:bg-[var(--muted)]"
+              }`}
+            >
+              <Folder size={16} /> {f}
+            </button>
+          ))}
+        </>
+      )}
+
+      {tags.length > 0 && (
+        <>
+          <div className="pt-5 pb-1.5 px-3 text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">
+            Tags
+          </div>
+          <div className="flex flex-wrap gap-1.5 px-3">
+            {tags.map((t) => (
+              <button
+                key={t}
+                onClick={() => { setViewFilter("tag"); setSelectedTag(t); setSelectedFolder(null); setMobileMenuOpen(false); }}
+                className={`px-2.5 py-1 text-xs rounded-full border transition-all duration-150 ${
+                  viewFilter === "tag" && selectedTag === t
+                    ? "bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]"
+                    : "border-[var(--border)] hover:bg-[var(--muted)] hover:border-[var(--primary)]/30"
+                }`}
+              >
+                <Tag size={10} className="inline mr-1" />
+                {t}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </nav>
+  );
+
   return (
-    <div className="min-h-screen bg-[var(--background)]">
+    <div className="min-h-screen bg-[var(--surface-1)]">
       {/* Header */}
-      <header className="border-b border-[var(--border)] px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <h1 className="text-xl font-bold">CollabEdit</h1>
+      <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--glass-bg)] backdrop-blur-md">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 rounded-lg hover:bg-[var(--muted)] md:hidden"
+            >
+              <Menu size={20} />
+            </button>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] bg-clip-text text-transparent">
+              CollabEdit
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
             <NotificationBell />
-            <span className="text-sm text-[var(--muted-foreground)]">
+            <span className="text-sm text-[var(--muted-foreground)] hidden sm:block">
               {session?.user?.name}
             </span>
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="p-2 rounded-lg hover:bg-[var(--muted)] text-[var(--muted-foreground)]"
+              className="p-2 rounded-full hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
               title="Sign out"
             >
               <LogOut size={18} />
@@ -140,89 +228,26 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto flex min-h-[calc(100vh-65px)]">
-        {/* Sidebar */}
+      <div className="max-w-6xl mx-auto flex min-h-[calc(100vh-57px)]">
+        {/* Desktop Sidebar */}
         <aside className="w-56 shrink-0 border-r border-[var(--border)] py-6 pr-4 hidden md:block">
-          <nav className="space-y-1">
-            <button
-              onClick={() => { setViewFilter("all"); setSelectedFolder(null); setSelectedTag(null); }}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg ${
-                viewFilter === "all" ? "bg-[var(--accent)] text-[var(--primary)] font-medium" : "hover:bg-[var(--muted)]"
-              }`}
-            >
-              <FileText size={16} /> All Documents
-            </button>
-            <button
-              onClick={() => { setViewFilter("recent"); setSelectedFolder(null); setSelectedTag(null); }}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg ${
-                viewFilter === "recent" ? "bg-[var(--accent)] text-[var(--primary)] font-medium" : "hover:bg-[var(--muted)]"
-              }`}
-            >
-              <Clock size={16} /> Recent
-            </button>
-            <button
-              onClick={() => { setViewFilter("starred"); setSelectedFolder(null); setSelectedTag(null); }}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg ${
-                viewFilter === "starred" ? "bg-[var(--accent)] text-[var(--primary)] font-medium" : "hover:bg-[var(--muted)]"
-              }`}
-            >
-              <Star size={16} /> Starred
-            </button>
-
-            {folders.length > 0 && (
-              <>
-                <div className="pt-4 pb-1 px-3 text-xs font-semibold text-[var(--muted-foreground)] uppercase">
-                  Folders
-                </div>
-                {folders.map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => { setViewFilter("folder"); setSelectedFolder(f); setSelectedTag(null); }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg truncate ${
-                      viewFilter === "folder" && selectedFolder === f
-                        ? "bg-[var(--accent)] text-[var(--primary)] font-medium"
-                        : "hover:bg-[var(--muted)]"
-                    }`}
-                  >
-                    <Folder size={16} /> {f}
-                  </button>
-                ))}
-              </>
-            )}
-
-            {tags.length > 0 && (
-              <>
-                <div className="pt-4 pb-1 px-3 text-xs font-semibold text-[var(--muted-foreground)] uppercase">
-                  Tags
-                </div>
-                <div className="flex flex-wrap gap-1 px-3">
-                  {tags.map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => { setViewFilter("tag"); setSelectedTag(t); setSelectedFolder(null); }}
-                      className={`px-2 py-0.5 text-xs rounded-full border ${
-                        viewFilter === "tag" && selectedTag === t
-                          ? "bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]"
-                          : "border-[var(--border)] hover:bg-[var(--muted)]"
-                      }`}
-                    >
-                      <Tag size={10} className="inline mr-0.5" />
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </nav>
+          {sidebarContent}
         </aside>
 
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <MobileMenu onClose={() => setMobileMenuOpen(false)}>
+            {sidebarContent}
+          </MobileMenu>
+        )}
+
         {/* Main content */}
-        <main className="flex-1 px-6 py-6">
+        <main className="flex-1 px-4 sm:px-6 py-6">
           {/* Actions bar */}
           <div className="flex items-center gap-3 mb-6">
             <div className="relative flex-1">
               <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]"
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]"
                 size={18}
               />
               <input
@@ -230,31 +255,32 @@ export default function DashboardPage() {
                 placeholder="Search documents..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-[var(--border)] rounded-lg bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                className="w-full pl-10 pr-4 py-2.5 border border-[var(--border)] rounded-xl bg-[var(--card)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]/50 focus:border-[var(--ring)] focus:shadow-[var(--shadow-sm)] transition-all"
               />
             </div>
             <div className="relative group">
               <button
                 onClick={handleCreate}
-                className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg font-medium hover:opacity-90"
+                className="flex items-center gap-2 px-4 py-2.5 text-white font-medium rounded-xl bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 hover:-translate-y-px hover:shadow-[var(--shadow-md)] transition-all duration-200"
               >
                 <Plus size={18} />
-                New
+                <span className="hidden sm:inline">New</span>
                 <ChevronDown size={14} />
               </button>
-              <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--background)] border border-[var(--border)] rounded-lg shadow-lg z-50 hidden group-hover:block">
+              <div className="absolute right-0 top-full mt-1.5 w-52 bg-[var(--popover)] border border-[var(--border)] rounded-xl shadow-[var(--shadow-lg)] z-50 hidden group-hover:block animate-slide-in-down overflow-hidden">
                 <button
                   onClick={handleCreate}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--muted)] rounded-t-lg"
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[var(--muted)] transition-colors"
                 >
-                  <FileText size={16} />
+                  <FileText size={16} className="text-[var(--primary)]" />
                   Blank Document
                 </button>
+                <div className="h-px bg-[var(--border)]" />
                 <button
                   onClick={() => setShowTemplates(true)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--muted)] rounded-b-lg"
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[var(--muted)] transition-colors"
                 >
-                  <LayoutTemplate size={16} />
+                  <LayoutTemplate size={16} className="text-[var(--primary)]" />
                   From Template
                 </button>
               </div>
@@ -267,23 +293,30 @@ export default function DashboardPage() {
               {[...Array(6)].map((_, i) => (
                 <div
                   key={i}
-                  className="h-40 bg-[var(--muted)] rounded-lg animate-pulse"
+                  className="h-44 rounded-xl shimmer-loading"
                 />
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-16">
-              <FileText
-                className="mx-auto mb-4 text-[var(--muted-foreground)]"
-                size={48}
-              />
-              <p className="text-[var(--muted-foreground)]">
+            <div className="text-center py-20 animate-fade-in">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[var(--muted)] flex items-center justify-center">
+                <FileText className="text-[var(--muted-foreground)]" size={32} />
+              </div>
+              <p className="text-[var(--muted-foreground)] text-lg">
                 {search
                   ? "No documents match your search"
                   : viewFilter === "starred"
                   ? "No starred documents"
-                  : "No documents yet. Create your first one!"}
+                  : "No documents yet"}
               </p>
+              {!search && viewFilter === "all" && (
+                <button
+                  onClick={handleCreate}
+                  className="mt-4 px-4 py-2 text-sm font-medium rounded-xl text-white bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 transition-opacity"
+                >
+                  Create your first document
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -291,20 +324,22 @@ export default function DashboardPage() {
                 <div
                   key={doc.id}
                   onClick={() => router.push(`/documents/${doc.id}`)}
-                  className="group border border-[var(--border)] rounded-lg p-4 cursor-pointer hover:border-[var(--primary)] hover:shadow-sm transition-all"
+                  className="group relative bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 cursor-pointer shadow-[var(--shadow-xs)] hover:shadow-[var(--shadow-lg)] hover:border-[var(--primary)]/40 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
                 >
+                  {/* Gradient accent bar */}
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+
                   <div className="flex items-start justify-between mb-3">
-                    <FileText
-                      className="text-[var(--primary)] shrink-0"
-                      size={24}
-                    />
-                    <div className="flex items-center gap-1">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--accent)] flex items-center justify-center">
+                      <FileText className="text-[var(--primary)]" size={20} />
+                    </div>
+                    <div className="flex items-center gap-0.5">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleStar(doc.id, doc.isStarred);
                         }}
-                        className={`p-1 rounded ${
+                        className={`p-1.5 rounded-lg transition-all duration-150 ${
                           doc.isStarred
                             ? "text-yellow-500"
                             : "text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100"
@@ -317,9 +352,9 @@ export default function DashboardPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDelete(doc.id);
+                            setDeleteTarget(doc.id);
                           }}
-                          className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-[var(--muted)] text-[var(--muted-foreground)]"
+                          className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-[var(--destructive)]/10 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all duration-150"
                           title="Delete"
                         >
                           <Trash2 size={16} />
@@ -327,44 +362,44 @@ export default function DashboardPage() {
                       )}
                     </div>
                   </div>
-                  <h3 className="font-medium truncate">{doc.title}</h3>
+                  <h3 className="font-semibold truncate text-[var(--card-foreground)]">{doc.title}</h3>
                   <p className="text-sm text-[var(--muted-foreground)] mt-1">
-                    {formatDistanceToNow(new Date(doc.updatedAt), {
-                      addSuffix: true,
-                    })}
+                    {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
                   </p>
-                  {/* Tags */}
                   {doc.tags && doc.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
+                    <div className="flex flex-wrap gap-1.5 mt-3">
                       {doc.tags.slice(0, 3).map((tag) => (
                         <span
                           key={tag}
-                          className="px-1.5 py-0.5 text-[10px] bg-[var(--muted)] rounded-full"
+                          className="px-2 py-0.5 text-[10px] font-medium rounded-full"
+                          style={{
+                            backgroundColor: `${getTagColor(tag)}15`,
+                            color: getTagColor(tag),
+                          }}
                         >
                           {tag}
                         </span>
                       ))}
                     </div>
                   )}
-                  {/* Folder badge */}
                   {doc.folder && (
-                    <div className="flex items-center gap-1 mt-2 text-xs text-[var(--muted-foreground)]">
+                    <div className="flex items-center gap-1 mt-2.5 text-xs text-[var(--muted-foreground)]">
                       <Folder size={12} />
                       {doc.folder}
                     </div>
                   )}
                   {doc.collaborators.length > 0 && (
-                    <div className="flex -space-x-2 mt-2">
+                    <div className="flex -space-x-2 mt-3">
                       {doc.collaborators.slice(0, 3).map((c, i) => (
                         <div
                           key={i}
-                          className="w-6 h-6 rounded-full bg-[var(--primary)] border-2 border-[var(--background)] flex items-center justify-center text-xs text-white"
+                          className="w-6 h-6 rounded-full bg-[var(--primary)] border-2 border-[var(--card)] flex items-center justify-center text-[10px] text-white font-medium shadow-[var(--shadow-xs)]"
                         >
                           {i + 1}
                         </div>
                       ))}
                       {doc.collaborators.length > 3 && (
-                        <div className="w-6 h-6 rounded-full bg-[var(--muted)] border-2 border-[var(--background)] flex items-center justify-center text-xs">
+                        <div className="w-6 h-6 rounded-full bg-[var(--muted)] border-2 border-[var(--card)] flex items-center justify-center text-[10px] font-medium">
                           +{doc.collaborators.length - 3}
                         </div>
                       )}
@@ -377,11 +412,21 @@ export default function DashboardPage() {
         </main>
       </div>
 
-      {/* Template selector modal */}
       {showTemplates && (
         <TemplateSelector
           onSelect={handleCreateFromTemplate}
           onClose={() => setShowTemplates(false)}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Delete Document"
+          description="This action cannot be undone. The document and all its history will be permanently deleted."
+          confirmLabel="Delete"
+          variant="destructive"
+          onConfirm={() => handleDelete(deleteTarget)}
+          onCancel={() => setDeleteTarget(null)}
         />
       )}
     </div>

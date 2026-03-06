@@ -29,7 +29,6 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
 
   useEffect(() => {
     fetchComments();
-    // Poll for new comments every 5s
     const interval = setInterval(fetchComments, 5000);
     return () => clearInterval(interval);
   }, [fetchComments]);
@@ -77,7 +76,6 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
     fetchComments();
   }
 
-  // Group comments by thread
   const threads = comments.reduce<Record<string, CommentData[]>>(
     (acc, comment) => {
       if (!acc[comment.threadId]) {
@@ -90,14 +88,14 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
   );
 
   return (
-    <div className="w-80 border-l border-[var(--border)] flex flex-col bg-[var(--background)]">
+    <div className="w-80 border-l border-[var(--border)] flex flex-col bg-[var(--card)] shadow-[-4px_0_15px_rgba(0,0,0,0.03)]">
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
         <h3 className="font-semibold">Comments</h3>
         <button
           onClick={onClose}
-          className="p-1 rounded hover:bg-[var(--muted)]"
+          className="p-1.5 rounded-full hover:bg-[var(--muted)] transition-colors"
         >
-          <X size={18} />
+          <X size={16} />
         </button>
       </div>
 
@@ -109,14 +107,14 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
             onChange={(e) => setNewComment(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
             placeholder="Add a comment..."
-            className="flex-1 px-3 py-1.5 text-sm border border-[var(--border)] rounded-lg bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+            className="flex-1 px-3 py-2 text-sm border border-[var(--border)] rounded-xl bg-[var(--surface-2)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]/50 focus:border-[var(--ring)] transition-shadow"
           />
           <button
             onClick={handleAddComment}
             disabled={!newComment.trim()}
-            className="p-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50"
+            className="p-2 rounded-xl bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] text-white hover:opacity-90 disabled:opacity-50 transition-opacity shadow-[var(--shadow-xs)]"
           >
-            <Send size={16} />
+            <Send size={14} />
           </button>
         </div>
       </div>
@@ -126,16 +124,15 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
         {loading ? (
           <div className="p-4 space-y-3">
             {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className="h-20 bg-[var(--muted)] rounded animate-pulse"
-              />
+              <div key={i} className="h-20 rounded-lg shimmer-loading" />
             ))}
           </div>
         ) : Object.keys(threads).length === 0 ? (
-          <div className="p-4 text-center text-sm text-[var(--muted-foreground)]">
-            <MessageCircle className="mx-auto mb-2" size={32} />
-            No comments yet
+          <div className="p-8 text-center">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-[var(--muted)] flex items-center justify-center">
+              <MessageCircle className="text-[var(--muted-foreground)]" size={24} />
+            </div>
+            <p className="text-sm text-[var(--muted-foreground)]">No comments yet</p>
           </div>
         ) : (
           <div className="divide-y divide-[var(--border)]">
@@ -147,14 +144,13 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
               return (
                 <div
                   key={threadId}
-                  className={`px-4 py-3 ${
-                    root.resolved ? "opacity-60" : ""
+                  className={`px-4 py-3 transition-opacity ${
+                    root.resolved ? "opacity-50" : ""
                   }`}
                 >
-                  {/* Root comment */}
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-start gap-2.5">
                     <div
-                      className="w-6 h-6 rounded-full bg-[var(--primary)] flex items-center justify-center text-xs text-white shrink-0"
+                      className="w-7 h-7 rounded-full bg-[var(--primary)] flex items-center justify-center text-xs text-white font-medium shrink-0 shadow-[var(--shadow-xs)]"
                     >
                       {(root.authorName || "?").charAt(0).toUpperCase()}
                     </div>
@@ -163,22 +159,20 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
                         <span className="text-sm font-medium truncate">
                           {root.authorName || "Unknown"}
                         </span>
-                        <span className="text-xs text-[var(--muted-foreground)]">
+                        <span className="text-[10px] text-[var(--muted-foreground)]">
                           {formatDistanceToNow(new Date(root.createdAt), {
                             addSuffix: true,
                           })}
                         </span>
                       </div>
-                      <p className="text-sm mt-0.5">{root.content}</p>
+                      <p className="text-sm mt-0.5 text-[var(--foreground)]">{root.content}</p>
 
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-3 mt-1.5">
                         <button
                           onClick={() =>
-                            setReplyTo(
-                              replyTo === root.id ? null : root.id
-                            )
+                            setReplyTo(replyTo === root.id ? null : root.id)
                           }
-                          className="text-xs text-[var(--primary)] hover:underline"
+                          className="text-xs text-[var(--primary)] hover:underline font-medium"
                         >
                           Reply
                         </button>
@@ -187,7 +181,7 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
                             onClick={() =>
                               handleResolve(root.id, !root.resolved)
                             }
-                            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--primary)] flex items-center gap-0.5"
+                            className="text-xs text-[var(--muted-foreground)] hover:text-[var(--primary)] flex items-center gap-0.5 transition-colors"
                           >
                             <Check size={12} />
                             {root.resolved ? "Unresolve" : "Resolve"}
@@ -201,9 +195,9 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
                   {replies.map((reply) => (
                     <div
                       key={reply.id}
-                      className="flex items-start gap-2 ml-8 mt-2"
+                      className="flex items-start gap-2 ml-9 mt-2.5"
                     >
-                      <div className="w-5 h-5 rounded-full bg-[var(--muted)] flex items-center justify-center text-xs shrink-0">
+                      <div className="w-5 h-5 rounded-full bg-[var(--secondary)] flex items-center justify-center text-[10px] font-medium shrink-0">
                         {(reply.authorName || "?").charAt(0).toUpperCase()}
                       </div>
                       <div>
@@ -211,7 +205,7 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
                           <span className="text-xs font-medium">
                             {reply.authorName || "Unknown"}
                           </span>
-                          <span className="text-xs text-[var(--muted-foreground)]">
+                          <span className="text-[10px] text-[var(--muted-foreground)]">
                             {formatDistanceToNow(new Date(reply.createdAt), {
                               addSuffix: true,
                             })}
@@ -224,7 +218,7 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
 
                   {/* Reply input */}
                   {replyTo === root.id && (
-                    <div className="flex gap-2 ml-8 mt-2">
+                    <div className="flex gap-2 ml-9 mt-2.5">
                       <input
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
@@ -233,15 +227,15 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
                           handleReply(threadId, root.id)
                         }
                         placeholder="Reply..."
-                        className="flex-1 px-2 py-1 text-sm border border-[var(--border)] rounded bg-[var(--background)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                        className="flex-1 px-2.5 py-1.5 text-sm border border-[var(--border)] rounded-lg bg-[var(--surface-2)] focus:outline-none focus:ring-1 focus:ring-[var(--ring)]/50"
                         autoFocus
                       />
                       <button
                         onClick={() => handleReply(threadId, root.id)}
                         disabled={!replyText.trim()}
-                        className="p-1 rounded bg-[var(--primary)] text-[var(--primary-foreground)] disabled:opacity-50"
+                        className="p-1.5 rounded-lg bg-[var(--primary)] text-white disabled:opacity-50"
                       >
-                        <Send size={14} />
+                        <Send size={12} />
                       </button>
                     </div>
                   )}

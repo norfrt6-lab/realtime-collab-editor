@@ -63,43 +63,37 @@ export function NotificationBell() {
     }
   }
 
-  function getIcon(type: string) {
-    switch (type) {
-      case "mention":
-        return <MessageSquare size={16} className="text-blue-500" />;
-      case "comment":
-        return <MessageSquare size={16} className="text-green-500" />;
-      case "share":
-        return <Share2 size={16} className="text-purple-500" />;
-      default:
-        return <FileText size={16} className="text-[var(--muted-foreground)]" />;
-    }
-  }
+  const typeConfig: Record<string, { icon: React.ReactNode; border: string }> = {
+    mention: { icon: <MessageSquare size={14} className="text-[var(--info)]" />, border: "border-l-[var(--info)]" },
+    comment: { icon: <MessageSquare size={14} className="text-[var(--success)]" />, border: "border-l-[var(--success)]" },
+    share: { icon: <Share2 size={14} className="text-purple-500" />, border: "border-l-purple-500" },
+    default: { icon: <FileText size={14} className="text-[var(--muted-foreground)]" />, border: "border-l-[var(--border)]" },
+  };
 
   return (
     <div ref={menuRef} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 rounded-lg hover:bg-[var(--muted)] text-[var(--muted-foreground)]"
+        className="relative p-2 rounded-full hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
         title="Notifications"
       >
         <Bell size={18} />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-[var(--destructive)] text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-[var(--shadow-sm)]">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-80 bg-[var(--background)] border border-[var(--border)] rounded-lg shadow-lg z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-[var(--popover)] border border-[var(--border)] rounded-xl shadow-[var(--shadow-xl)] z-50 overflow-hidden animate-slide-in-down">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
             <h3 className="font-semibold text-sm">Notifications</h3>
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <button
                   onClick={markAllRead}
-                  className="text-xs text-[var(--primary)] hover:underline flex items-center gap-1"
+                  className="text-xs text-[var(--primary)] hover:underline flex items-center gap-1 font-medium"
                 >
                   <Check size={12} />
                   Mark all read
@@ -107,7 +101,7 @@ export function NotificationBell() {
               )}
               <button
                 onClick={() => setOpen(false)}
-                className="p-0.5 rounded hover:bg-[var(--muted)]"
+                className="p-1 rounded-full hover:bg-[var(--muted)] transition-colors"
               >
                 <X size={14} />
               </button>
@@ -116,34 +110,39 @@ export function NotificationBell() {
 
           <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
+              <div className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">
                 No notifications
               </div>
             ) : (
-              notifications.map((n) => (
-                <button
-                  key={n.id}
-                  onClick={() => handleClick(n)}
-                  className={`w-full text-left px-4 py-3 hover:bg-[var(--muted)] border-b border-[var(--border)] last:border-0 ${
-                    !n.read ? "bg-[var(--accent)]" : ""
-                  }`}
-                >
-                  <div className="flex items-start gap-2">
-                    <div className="mt-0.5">{getIcon(n.type)}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm">{n.message}</p>
-                      <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                        {formatDistanceToNow(new Date(n.createdAt), {
-                          addSuffix: true,
-                        })}
-                      </p>
+              notifications.map((n) => {
+                const config = typeConfig[n.type] || typeConfig.default;
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => handleClick(n)}
+                    className={`w-full text-left px-4 py-3 hover:bg-[var(--surface-2)] border-b border-[var(--border)] last:border-0 border-l-2 transition-colors ${
+                      config.border
+                    } ${!n.read ? "bg-[var(--accent)]/50" : ""}`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className="mt-0.5 w-7 h-7 rounded-lg bg-[var(--surface-3)] flex items-center justify-center shrink-0">
+                        {config.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm">{n.message}</p>
+                        <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5">
+                          {formatDistanceToNow(new Date(n.createdAt), {
+                            addSuffix: true,
+                          })}
+                        </p>
+                      </div>
+                      {!n.read && (
+                        <div className="w-2 h-2 rounded-full bg-[var(--primary)] shrink-0 mt-1.5" />
+                      )}
                     </div>
-                    {!n.read && (
-                      <div className="w-2 h-2 rounded-full bg-[var(--primary)] shrink-0 mt-1.5" />
-                    )}
-                  </div>
-                </button>
-              ))
+                  </button>
+                );
+              })
             )}
           </div>
         </div>
