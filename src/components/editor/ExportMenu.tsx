@@ -67,39 +67,34 @@ export function ExportMenu({ editor, documentTitle }: ExportMenuProps) {
     setOpen(false);
   }
 
+  const items = [
+    { icon: <FileText size={16} className="text-green-500" />, label: "Markdown (.md)", action: handleExportMarkdown },
+    { icon: <Code size={16} className="text-orange-500" />, label: "HTML (.html)", action: handleExportHtml },
+    { icon: <FileType size={16} className="text-gray-500" />, label: "Plain Text (.txt)", action: handleExportText },
+  ];
+
   return (
     <div ref={menuRef} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="p-1.5 rounded-lg hover:bg-[var(--muted)]"
+        className="p-2 rounded-full hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
         title="Export document"
       >
-        <Download size={20} />
+        <Download size={18} />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--background)] border border-[var(--border)] rounded-lg shadow-lg z-50">
-          <button
-            onClick={handleExportMarkdown}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--muted)] rounded-t-lg"
-          >
-            <FileText size={16} />
-            Markdown (.md)
-          </button>
-          <button
-            onClick={handleExportHtml}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--muted)]"
-          >
-            <Code size={16} />
-            HTML (.html)
-          </button>
-          <button
-            onClick={handleExportText}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--muted)] rounded-b-lg"
-          >
-            <FileType size={16} />
-            Plain Text (.txt)
-          </button>
+        <div className="absolute right-0 top-full mt-1.5 w-52 bg-[var(--popover)] border border-[var(--border)] rounded-xl shadow-[var(--shadow-lg)] z-50 animate-slide-in-down overflow-hidden">
+          {items.map((item, i) => (
+            <button
+              key={i}
+              onClick={item.action}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[var(--muted)] transition-colors"
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
         </div>
       )}
     </div>

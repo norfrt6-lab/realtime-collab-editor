@@ -48,14 +48,19 @@ export function TypingIndicator({
 
   const text =
     typingUsers.length === 1
-      ? `${typingUsers[0]} is typing...`
+      ? `${typingUsers[0]} is typing`
       : typingUsers.length === 2
-      ? `${typingUsers[0]} and ${typingUsers[1]} are typing...`
-      : `${typingUsers[0]} and ${typingUsers.length - 1} others are typing...`;
+      ? `${typingUsers[0]} and ${typingUsers[1]} are typing`
+      : `${typingUsers[0]} and ${typingUsers.length - 1} others are typing`;
 
   return (
-    <div className="text-xs text-[var(--muted-foreground)] px-4 py-1 animate-pulse">
-      {text}
+    <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)] px-4 py-1.5 bg-[var(--surface-2)] animate-slide-in-up">
+      <span>{text}</span>
+      <span className="flex items-center gap-0.5">
+        <span className="typing-dot" />
+        <span className="typing-dot" />
+        <span className="typing-dot" />
+      </span>
     </div>
   );
 }

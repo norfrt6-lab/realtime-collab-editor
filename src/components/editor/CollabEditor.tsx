@@ -19,6 +19,7 @@ import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
+import { Wifi, WifiOff, Loader } from "lucide-react";
 
 import { Toolbar } from "./Toolbar";
 
@@ -51,7 +52,6 @@ export function CollabEditor({
     };
   }, [provider]);
 
-  // Set typing awareness on editor update
   const handleTyping = useCallback(() => {
     provider.setAwarenessField("isTyping", true);
 
@@ -113,7 +113,6 @@ export function CollabEditor({
     },
   });
 
-  // Notify parent when editor is ready
   useEffect(() => {
     if (editor && onEditorReady) {
       onEditorReady(editor);
@@ -123,16 +122,20 @@ export function CollabEditor({
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Connection status */}
-      <div className="flex items-center gap-2 px-4 py-1 text-xs text-[var(--muted-foreground)] border-b border-[var(--border)]">
-        <div
-          className={`w-2 h-2 rounded-full ${
-            status === "connected"
-              ? "bg-green-500"
-              : status === "connecting"
-              ? "bg-yellow-500"
-              : "bg-red-500"
-          }`}
-        />
+      <div
+        className={`flex items-center gap-2 px-4 py-1.5 text-xs border-b transition-colors duration-300 ${
+          status === "disconnected"
+            ? "bg-[var(--destructive)]/10 border-[var(--destructive)]/20 text-[var(--destructive)]"
+            : "border-[var(--border)] text-[var(--muted-foreground)]"
+        }`}
+      >
+        {status === "connected" ? (
+          <Wifi size={12} className="text-[var(--success)]" />
+        ) : status === "connecting" ? (
+          <Loader size={12} className="text-[var(--warning)] animate-spin" />
+        ) : (
+          <WifiOff size={12} />
+        )}
         <span>
           {status === "connected"
             ? "Connected"
@@ -147,12 +150,10 @@ export function CollabEditor({
         )}
       </div>
 
-      {/* Toolbar */}
       <Toolbar editor={editor} />
 
-      {/* Editor */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="flex-1 overflow-y-auto bg-[var(--card)]">
+        <div className="max-w-4xl mx-auto px-6 py-8">
           <EditorContent editor={editor} />
         </div>
       </div>

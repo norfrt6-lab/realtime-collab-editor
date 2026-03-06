@@ -24,9 +24,11 @@ export function WordCount({ editor }: WordCountProps) {
   }, [editor]);
 
   return (
-    <div className="flex items-center gap-3 text-xs text-[var(--muted-foreground)]">
+    <div className="flex items-center gap-2 text-[10px] text-[var(--muted-foreground)] bg-[var(--surface-2)] rounded-full px-3 py-1">
       <span>{stats.words} words</span>
-      <span>{stats.characters} characters</span>
+      <span className="opacity-30">·</span>
+      <span>{stats.characters} chars</span>
+      <span className="opacity-30">·</span>
       <span>{stats.readingTime}</span>
     </div>
   );
