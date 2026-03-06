@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { useEditor, EditorContent, type Editor } from "@tiptap/react";
+import { useEditor, EditorContent, ReactRenderer, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
@@ -17,16 +17,20 @@ import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
+import Mention from "@tiptap/extension-mention";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
+import tippy, { type Instance as TippyInstance } from "tippy.js";
 import { Wifi, WifiOff, Loader } from "lucide-react";
 
 import { Toolbar } from "./Toolbar";
+import { MentionList, type MentionListRef } from "./MentionList";
 
 interface CollabEditorProps {
   ydoc: Y.Doc;
   provider: HocuspocusProvider;
   user: { name: string; color: string };
+  documentId: string;
   onEditorReady?: (editor: Editor) => void;
 }
 
@@ -34,6 +38,7 @@ export function CollabEditor({
   ydoc,
   provider,
   user,
+  documentId,
   onEditorReady,
 }: CollabEditorProps) {
   const [status, setStatus] = useState<
@@ -64,6 +69,80 @@ export function CollabEditor({
     }, 2000);
   }, [provider]);
 
+  const mentionSuggestion = useMemo(
+    () => ({
+      items: async ({ query }: { query: string }) => {
+        try {
+          const res = await fetch(`/api/documents/${documentId}/collaborators`);
+          if (!res.ok) return [];
+          const users = await res.json();
+          return users.filter((u: { name: string }) =>
+            u.name.toLowerCase().includes(query.toLowerCase())
+          );
+        } catch {
+          return [];
+        }
+      },
+      render: () => {
+        let component: ReactRenderer<MentionListRef> | null = null;
+        let popup: TippyInstance[] | null = null;
+
+        return {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onStart: (props: any) => {
+            const originalCommand = props.command;
+            const wrappedCommand = (attrs: { id: string; label: string }) => {
+              originalCommand(attrs);
+              fetch(`/api/documents/${documentId}/mentions`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mentionedUserId: attrs.id }),
+              }).catch(() => {});
+            };
+
+            component = new ReactRenderer(MentionList, {
+              props: { ...props, command: wrappedCommand },
+              editor: props.editor,
+            });
+
+            if (!props.clientRect) return;
+
+            popup = tippy("body", {
+              getReferenceClientRect: props.clientRect,
+              appendTo: () => document.body,
+              content: component.element,
+              showOnCreate: true,
+              interactive: true,
+              trigger: "manual",
+              placement: "bottom-start",
+            });
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onUpdate: (props: any) => {
+            component?.updateProps(props);
+            if (popup?.[0] && props.clientRect) {
+              popup[0].setProps({
+                getReferenceClientRect: props.clientRect,
+              });
+            }
+          },
+          onKeyDown: (props: { event: KeyboardEvent }) => {
+            if (props.event.key === "Escape") {
+              popup?.[0]?.hide();
+              return true;
+            }
+            return component?.ref?.onKeyDown(props) || false;
+          },
+          onExit: () => {
+            popup?.[0]?.destroy();
+            component?.destroy();
+          },
+        };
+      },
+    }),
+    [documentId]
+  );
+
   const extensions = useMemo(
     () => [
       StarterKit.configure({
@@ -78,7 +157,7 @@ export function CollabEditor({
       }),
       Placeholder.configure({
         placeholder:
-          'Start typing... Use "/" for slash commands',
+          'Start typing... Use "/" for slash commands, "@" to mention',
       }),
       CharacterCount,
       Highlight.configure({ multicolor: true }),
@@ -97,8 +176,14 @@ export function CollabEditor({
       TableRow,
       TableCell,
       TableHeader,
+      Mention.configure({
+        HTMLAttributes: {
+          class: "mention",
+        },
+        suggestion: mentionSuggestion,
+      }),
     ],
-    [ydoc, provider, user]
+    [ydoc, provider, user, mentionSuggestion]
   );
 
   const editor = useEditor({

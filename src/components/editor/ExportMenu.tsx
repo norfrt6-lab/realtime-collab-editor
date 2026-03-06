@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import type { Editor } from "@tiptap/react";
 import { Download, FileText, Code, FileType } from "lucide-react";
 import { exportToMarkdown, exportToHtml, downloadFile } from "@/lib/export";
+import { useToast } from "@/components/ui/Toast";
 
 interface ExportMenuProps {
   editor: Editor | null;
@@ -13,6 +14,7 @@ interface ExportMenuProps {
 export function ExportMenu({ editor, documentTitle }: ExportMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -29,14 +31,30 @@ export function ExportMenu({ editor, documentTitle }: ExportMenuProps) {
   const filename = documentTitle.replace(/[^a-zA-Z0-9-_ ]/g, "").trim() || "document";
 
   function handleExportMarkdown() {
-    const md = exportToMarkdown(editor!);
-    downloadFile(md, `${filename}.md`, "text/markdown");
+    try {
+      if (editor!.isEmpty) {
+        toast("warning", "Document is empty");
+        setOpen(false);
+        return;
+      }
+      const md = exportToMarkdown(editor!);
+      downloadFile(md, `${filename}.md`, "text/markdown");
+      toast("success", "Exported as Markdown");
+    } catch (err) {
+      toast("error", `Export failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+    }
     setOpen(false);
   }
 
   function handleExportHtml() {
-    const html = exportToHtml(editor!);
-    const full = `<!DOCTYPE html>
+    try {
+      if (editor!.isEmpty) {
+        toast("warning", "Document is empty");
+        setOpen(false);
+        return;
+      }
+      const html = exportToHtml(editor!);
+      const full = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -57,13 +75,27 @@ export function ExportMenu({ editor, documentTitle }: ExportMenuProps) {
   ${html}
 </body>
 </html>`;
-    downloadFile(full, `${filename}.html`, "text/html");
+      downloadFile(full, `${filename}.html`, "text/html");
+      toast("success", "Exported as HTML");
+    } catch (err) {
+      toast("error", `Export failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+    }
     setOpen(false);
   }
 
   function handleExportText() {
-    const text = editor!.state.doc.textContent;
-    downloadFile(text, `${filename}.txt`, "text/plain");
+    try {
+      if (editor!.isEmpty) {
+        toast("warning", "Document is empty");
+        setOpen(false);
+        return;
+      }
+      const text = editor!.state.doc.textContent;
+      downloadFile(text, `${filename}.txt`, "text/plain");
+      toast("success", "Exported as Plain Text");
+    } catch (err) {
+      toast("error", `Export failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+    }
     setOpen(false);
   }
 

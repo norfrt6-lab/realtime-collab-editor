@@ -52,11 +52,14 @@ const mockInsertOne = jest.fn();
 const mockFindOne = jest.fn();
 const mockUpdateOne = jest.fn();
 
+const mockCountDocuments = jest.fn();
+
 const mockDocsCollection = {
   find: mockFind,
   insertOne: mockInsertOne,
   findOne: mockFindOne,
   updateOne: mockUpdateOne,
+  countDocuments: mockCountDocuments,
 };
 
 jest.mock("@/lib/db/collections", () => ({
@@ -94,10 +97,15 @@ const mockDoc = {
 describe("GET /api/documents", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCountDocuments.mockResolvedValue(1);
     mockFind.mockReturnValue({
       sort: jest.fn().mockReturnValue({
         project: jest.fn().mockReturnValue({
-          toArray: jest.fn().mockResolvedValue([mockDoc]),
+          skip: jest.fn().mockReturnValue({
+            limit: jest.fn().mockReturnValue({
+              toArray: jest.fn().mockResolvedValue([mockDoc]),
+            }),
+          }),
         }),
       }),
     });
@@ -127,8 +135,11 @@ describe("GET /api/documents", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(Array.isArray(data)).toBe(true);
-    expect(data[0].title).toBe("Test Document");
+    expect(data.documents).toBeDefined();
+    expect(Array.isArray(data.documents)).toBe(true);
+    expect(data.documents[0].title).toBe("Test Document");
+    expect(data.total).toBe(1);
+    expect(data.hasMore).toBe(false);
   });
 });
 
