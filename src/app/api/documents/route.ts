@@ -85,8 +85,7 @@ export async function POST(request: Request) {
       updatedAt: now,
       isPublic: false,
       isDeleted: false,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    });
 
     await logActivity(result.insertedId, userId, "created");
 

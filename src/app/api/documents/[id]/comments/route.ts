@@ -122,8 +122,7 @@ export async function POST(
       parentId: parentId ? new ObjectId(parentId) : null,
       resolved: false,
       createdAt: new Date(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    });
 
     return NextResponse.json(
       { id: result.insertedId.toString() },
