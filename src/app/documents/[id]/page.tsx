@@ -343,6 +343,7 @@ export default function EditorPage() {
               ydoc={ydocRef.current}
               provider={providerRef.current}
               user={userInfo}
+              documentId={documentId}
               onEditorReady={(editor) => {
                 editorRef.current = editor;
                 const templateId = searchParams.get("template");
@@ -397,6 +398,7 @@ export default function EditorPage() {
       {showShare && doc && (
         <ShareDialog
           document={doc}
+          isOwner={doc.ownerId === session.user.id}
           onClose={() => setShowShare(false)}
           onUpdate={fetchDoc}
         />

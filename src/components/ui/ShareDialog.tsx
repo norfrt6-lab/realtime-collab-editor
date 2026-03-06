@@ -6,11 +6,12 @@ import type { DocumentMeta } from "@/types";
 
 interface ShareDialogProps {
   document: DocumentMeta;
+  isOwner: boolean;
   onClose: () => void;
   onUpdate: () => void;
 }
 
-export function ShareDialog({ document, onClose, onUpdate }: ShareDialogProps) {
+export function ShareDialog({ document, isOwner, onClose, onUpdate }: ShareDialogProps) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"editor" | "viewer">("editor");
   const [copied, setCopied] = useState(false);
@@ -58,6 +59,17 @@ export function ShareDialog({ document, onClose, onUpdate }: ShareDialogProps) {
 
     setEmail("");
     onUpdate();
+  }
+
+  async function handleRemoveCollaborator(userId: string) {
+    const res = await fetch(`/api/documents/${document.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ removeCollaborator: { userId } }),
+    });
+    if (res.ok) {
+      onUpdate();
+    }
   }
 
   function handleCopyLink() {
@@ -136,9 +148,20 @@ export function ShareDialog({ document, onClose, onUpdate }: ShareDialogProps) {
                     className="flex items-center justify-between px-3 py-2.5 bg-[var(--surface-2)] rounded-xl text-sm"
                   >
                     <span>{c.name || c.email || c.userId}</span>
-                    <span className="text-[var(--muted-foreground)] capitalize text-xs bg-[var(--muted)] px-2 py-0.5 rounded-full">
-                      {c.role}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[var(--muted-foreground)] capitalize text-xs bg-[var(--muted)] px-2 py-0.5 rounded-full">
+                        {c.role}
+                      </span>
+                      {isOwner && (
+                        <button
+                          onClick={() => handleRemoveCollaborator(c.userId)}
+                          className="p-1 rounded-full hover:bg-[var(--destructive)]/10 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-colors"
+                          title="Remove collaborator"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
