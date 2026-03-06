@@ -79,8 +79,7 @@ export async function PATCH(
     const body = await request.json();
     const docs = await getDocumentsCollection();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const update: Record<string, any> = {};
+    const update: Record<string, unknown> = {};
     const setFields: Record<string, unknown> = { updatedAt: new Date() };
 
     if (body.title !== undefined) setFields.title = body.title;

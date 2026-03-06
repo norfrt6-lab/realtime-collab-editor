@@ -56,8 +56,7 @@ export async function POST(request: Request) {
       name: name.trim(),
       passwordHash,
       createdAt: new Date(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    });
 
     return NextResponse.json(
       { id: result.insertedId.toString(), email: email.toLowerCase(), name: name.trim() },
