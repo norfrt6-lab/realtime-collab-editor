@@ -46,13 +46,15 @@ export function Toolbar({ editor }: ToolbarProps) {
     [
       {
         icon: <Undo size={16} />,
-        title: "Undo",
-        action: () => editor.chain().focus().undo().run(),
+        title: "Undo (Ctrl+Z)",
+        action: () => editor.commands.undo(),
+        isActive: false,
       },
       {
         icon: <Redo size={16} />,
-        title: "Redo",
-        action: () => editor.chain().focus().redo().run(),
+        title: "Redo (Ctrl+Y)",
+        action: () => editor.commands.redo(),
+        isActive: false,
       },
     ],
     [

@@ -29,7 +29,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <AuthProvider>
           <ToastProvider>{children}</ToastProvider>
         </AuthProvider>

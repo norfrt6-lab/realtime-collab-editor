@@ -18,6 +18,7 @@ import {
   Menu,
   User,
   Users,
+  RotateCcw,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { DocumentMeta } from "@/types";
@@ -28,7 +29,7 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { MobileMenu } from "@/components/ui/MobileMenu";
 
-type ViewFilter = "all" | "starred" | "recent" | "folder" | "tag" | "my" | "shared";
+type ViewFilter = "all" | "starred" | "recent" | "folder" | "tag" | "my" | "shared" | "trash";
 
 function getTagColor(tag: string) {
   let hash = 0;
@@ -63,6 +64,7 @@ export default function DashboardPage() {
     if (viewFilter === "starred") params.set("starred", "true");
     if (viewFilter === "my") params.set("owner", "true");
     if (viewFilter === "shared") params.set("shared", "true");
+    if (viewFilter === "trash") params.set("deleted", "true");
     if (selectedFolder) params.set("folder", selectedFolder);
     if (selectedTag) params.set("tag", selectedTag);
 
@@ -131,6 +133,13 @@ export default function DashboardPage() {
     setDeleteTarget(null);
   }
 
+  async function handleRestore(id: string) {
+    const res = await fetch(`/api/documents/${id}/restore`, { method: "POST" });
+    if (res.ok) {
+      setDocuments((prev) => prev.filter((d) => d.id !== id));
+    }
+  }
+
   async function handleToggleStar(id: string, isStarred: boolean) {
     const method = isStarred ? "DELETE" : "POST";
     await fetch(`/api/documents/${id}/star`, { method });
@@ -159,6 +168,7 @@ export default function DashboardPage() {
         { filter: "shared" as const, icon: <Users size={16} />, label: "Shared with Me" },
         { filter: "recent" as const, icon: <Clock size={16} />, label: "Recent" },
         { filter: "starred" as const, icon: <Star size={16} />, label: "Starred" },
+        { filter: "trash" as const, icon: <Trash2 size={16} />, label: "Trash" },
       ]).map(({ filter, icon, label }) => (
         <button
           key={filter}
@@ -339,6 +349,8 @@ export default function DashboardPage() {
                   ? "You haven't created any documents"
                   : viewFilter === "shared"
                   ? "No documents shared with you"
+                  : viewFilter === "trash"
+                  ? "Trash is empty"
                   : "No documents yet"}
               </p>
               {!search && viewFilter === "all" && (
@@ -356,7 +368,7 @@ export default function DashboardPage() {
               {filtered.map((doc) => (
                 <div
                   key={doc.id}
-                  onClick={() => router.push(`/documents/${doc.id}`)}
+                  onClick={() => viewFilter !== "trash" && router.push(`/documents/${doc.id}`)}
                   className="group relative bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 cursor-pointer shadow-[var(--shadow-xs)] hover:shadow-[var(--shadow-lg)] hover:border-[var(--primary)]/40 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
                 >
                   {/* Gradient accent bar */}
@@ -367,31 +379,58 @@ export default function DashboardPage() {
                       <FileText className="text-[var(--primary)]" size={20} />
                     </div>
                     <div className="flex items-center gap-0.5">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleStar(doc.id, doc.isStarred);
-                        }}
-                        className={`p-1.5 rounded-lg transition-all duration-150 ${
-                          doc.isStarred
-                            ? "text-yellow-500"
-                            : "text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100"
-                        } hover:bg-[var(--muted)]`}
-                        title={doc.isStarred ? "Unstar" : "Star"}
-                      >
-                        <Star size={16} fill={doc.isStarred ? "currentColor" : "none"} />
-                      </button>
-                      {doc.ownerId === session?.user?.id && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteTarget(doc.id);
-                          }}
-                          className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-[var(--destructive)]/10 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all duration-150"
-                          title="Delete"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                      {viewFilter === "trash" ? (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRestore(doc.id);
+                            }}
+                            className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-[var(--success)]/10 text-[var(--muted-foreground)] hover:text-[var(--success)] transition-all duration-150"
+                            title="Restore"
+                          >
+                            <RotateCcw size={16} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget(doc.id);
+                            }}
+                            className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-[var(--destructive)]/10 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all duration-150"
+                            title="Delete forever"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleStar(doc.id, doc.isStarred);
+                            }}
+                            className={`p-1.5 rounded-lg transition-all duration-150 ${
+                              doc.isStarred
+                                ? "text-yellow-500"
+                                : "text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100"
+                            } hover:bg-[var(--muted)]`}
+                            title={doc.isStarred ? "Unstar" : "Star"}
+                          >
+                            <Star size={16} fill={doc.isStarred ? "currentColor" : "none"} />
+                          </button>
+                          {doc.ownerId === session?.user?.id && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTarget(doc.id);
+                              }}
+                              className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-[var(--destructive)]/10 text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-all duration-150"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -467,9 +506,13 @@ export default function DashboardPage() {
 
       {deleteTarget && (
         <ConfirmModal
-          title="Delete Document"
-          description="This action cannot be undone. The document and all its history will be permanently deleted."
-          confirmLabel="Delete"
+          title={viewFilter === "trash" ? "Delete Forever" : "Delete Document"}
+          description={
+            viewFilter === "trash"
+              ? "This will permanently delete the document and all its comments. This cannot be undone."
+              : "The document will be moved to trash. You can restore it later."
+          }
+          confirmLabel={viewFilter === "trash" ? "Delete Forever" : "Move to Trash"}
           variant="destructive"
           onConfirm={() => handleDelete(deleteTarget)}
           onCancel={() => setDeleteTarget(null)}

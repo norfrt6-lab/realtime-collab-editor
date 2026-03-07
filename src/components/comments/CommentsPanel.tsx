@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { X, Check, Send, MessageCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { CommentData } from "@/types";
+import { CommentMentionInput } from "./CommentMentionInput";
 
 interface CommentsPanelProps {
   documentId: string;
@@ -33,7 +34,17 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
     return () => clearInterval(interval);
   }, [fetchComments]);
 
-  async function handleAddComment() {
+  async function sendMentionNotifications(mentionedUserIds: string[]) {
+    for (const userId of mentionedUserIds) {
+      fetch(`/api/documents/${documentId}/mentions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mentionedUserId: userId }),
+      }).catch(() => {});
+    }
+  }
+
+  async function handleAddComment(mentionedUserIds: string[] = []) {
     if (!newComment.trim()) return;
 
     const res = await fetch(`/api/documents/${documentId}/comments`, {
@@ -46,12 +57,13 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
     });
 
     if (res.ok) {
+      if (mentionedUserIds.length > 0) sendMentionNotifications(mentionedUserIds);
       setNewComment("");
       fetchComments();
     }
   }
 
-  async function handleReply(threadId: string, parentId: string) {
+  async function handleReply(threadId: string, parentId: string, mentionedUserIds: string[] = []) {
     if (!replyText.trim()) return;
 
     const res = await fetch(`/api/documents/${documentId}/comments`, {
@@ -65,6 +77,7 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
     });
 
     if (res.ok) {
+      if (mentionedUserIds.length > 0) sendMentionNotifications(mentionedUserIds);
       setReplyTo(null);
       setReplyText("");
       fetchComments();
@@ -108,15 +121,16 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
       {/* Add new comment */}
       <div className="px-4 py-3 border-b border-[var(--border)]">
         <div className="flex gap-2">
-          <input
+          <CommentMentionInput
             value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
-            placeholder="Add a comment..."
+            onChange={setNewComment}
+            onSubmit={(mentionedIds) => handleAddComment(mentionedIds)}
+            documentId={documentId}
+            placeholder="Add a comment... Use @ to mention"
             className="flex-1 px-3 py-2 text-sm border border-[var(--border)] rounded-xl bg-[var(--surface-2)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]/50 focus:border-[var(--ring)] transition-shadow"
           />
           <button
-            onClick={handleAddComment}
+            onClick={() => handleAddComment()}
             disabled={!newComment.trim()}
             className="p-2 rounded-xl bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] text-white hover:opacity-90 disabled:opacity-50 transition-opacity shadow-[var(--shadow-xs)]"
           >
@@ -225,14 +239,12 @@ export function CommentsPanel({ documentId, onClose }: CommentsPanelProps) {
                   {/* Reply input */}
                   {replyTo === root.id && (
                     <div className="flex gap-2 ml-9 mt-2.5">
-                      <input
+                      <CommentMentionInput
                         value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        onKeyDown={(e) =>
-                          e.key === "Enter" &&
-                          handleReply(threadId, root.id)
-                        }
-                        placeholder="Reply..."
+                        onChange={setReplyText}
+                        onSubmit={(mentionedIds) => handleReply(threadId, root.id, mentionedIds)}
+                        documentId={documentId}
+                        placeholder="Reply... Use @ to mention"
                         className="flex-1 px-2.5 py-1.5 text-sm border border-[var(--border)] rounded-lg bg-[var(--surface-2)] focus:outline-none focus:ring-1 focus:ring-[var(--ring)]/50"
                         autoFocus
                       />
