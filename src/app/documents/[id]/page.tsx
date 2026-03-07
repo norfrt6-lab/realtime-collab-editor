@@ -12,6 +12,7 @@ import {
   Tag,
   Folder,
   X,
+  Keyboard,
 } from "lucide-react";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import type * as Y from "yjs";
@@ -24,6 +25,7 @@ import { TypingIndicator } from "@/components/presence/TypingIndicator";
 import { VersionHistoryPanel } from "@/components/version-history/VersionHistoryPanel";
 import { CommentsPanel } from "@/components/comments/CommentsPanel";
 import { ActivityPanel } from "@/components/editor/ActivityPanel";
+import { KeyboardShortcutsPanel } from "@/components/editor/KeyboardShortcutsPanel";
 import { ShareDialog } from "@/components/ui/ShareDialog";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useToast } from "@/components/ui/Toast";
@@ -57,6 +59,7 @@ export default function EditorPage() {
   const [showComments, setShowComments] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [showTagInput, setShowTagInput] = useState(false);
   const [folderInput, setFolderInput] = useState("");
@@ -161,6 +164,10 @@ export default function EditorPage() {
           body: JSON.stringify({ label: "Quick save" }),
         }).then(() => toast("success", "Version saved"));
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+        e.preventDefault();
+        setShowShortcuts((prev) => !prev);
+      }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
@@ -182,12 +189,13 @@ export default function EditorPage() {
     color: getUserColor(session.user.id),
   };
 
-  const activePanel = showVersions ? "versions" : showComments ? "comments" : showActivity ? "activity" : null;
+  const activePanel = showVersions ? "versions" : showComments ? "comments" : showActivity ? "activity" : showShortcuts ? "shortcuts" : null;
 
-  function togglePanel(panel: "versions" | "comments" | "activity") {
+  function togglePanel(panel: "versions" | "comments" | "activity" | "shortcuts") {
     setShowVersions(panel === "versions" ? !showVersions : false);
     setShowComments(panel === "comments" ? !showComments : false);
     setShowActivity(panel === "activity" ? !showActivity : false);
+    setShowShortcuts(panel === "shortcuts" ? !showShortcuts : false);
   }
 
   return (
@@ -240,6 +248,18 @@ export default function EditorPage() {
               {icon}
             </button>
           ))}
+
+          <button
+            onClick={() => togglePanel("shortcuts")}
+            className={`p-2 rounded-full transition-all duration-150 ${
+              activePanel === "shortcuts"
+                ? "bg-[var(--accent)] text-[var(--primary)] shadow-[var(--shadow-xs)]"
+                : "hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            }`}
+            title="Keyboard Shortcuts (Ctrl+/)"
+          >
+            <Keyboard size={18} />
+          </button>
 
           <button
             onClick={() => setShowShare(true)}
@@ -391,6 +411,12 @@ export default function EditorPage() {
               documentId={documentId}
               onClose={() => setShowActivity(false)}
             />
+          </div>
+        )}
+
+        {showShortcuts && (
+          <div className="animate-slide-in-right">
+            <KeyboardShortcutsPanel onClose={() => setShowShortcuts(false)} />
           </div>
         )}
       </div>
