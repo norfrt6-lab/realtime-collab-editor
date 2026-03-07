@@ -24,7 +24,9 @@ import tippy, { type Instance as TippyInstance } from "tippy.js";
 import { Wifi, WifiOff, Loader } from "lucide-react";
 
 import { Toolbar } from "./Toolbar";
+import { FindReplaceBar } from "./FindReplaceBar";
 import { MentionList, type MentionListRef } from "./MentionList";
+import { SearchReplace } from "@/lib/extensions/search-replace";
 
 interface CollabEditorProps {
   ydoc: Y.Doc;
@@ -44,6 +46,8 @@ export function CollabEditor({
   const [status, setStatus] = useState<
     "connecting" | "connected" | "disconnected"
   >("connecting");
+  const [showFindReplace, setShowFindReplace] = useState(false);
+  const [findReplaceMode, setFindReplaceMode] = useState<"find" | "replace">("find");
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -182,6 +186,7 @@ export function CollabEditor({
         },
         suggestion: mentionSuggestion,
       }),
+      SearchReplace,
     ],
     [ydoc, provider, user, mentionSuggestion]
   );
@@ -203,6 +208,23 @@ export function CollabEditor({
       onEditorReady(editor);
     }
   }, [editor, onEditorReady]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setFindReplaceMode("find");
+        setShowFindReplace(true);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "h") {
+        e.preventDefault();
+        setFindReplaceMode("replace");
+        setShowFindReplace(true);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -236,6 +258,14 @@ export function CollabEditor({
       </div>
 
       <Toolbar editor={editor} />
+
+      {showFindReplace && editor && (
+        <FindReplaceBar
+          editor={editor}
+          showReplace={findReplaceMode === "replace"}
+          onClose={() => setShowFindReplace(false)}
+        />
+      )}
 
       <div className="flex-1 overflow-y-auto bg-[var(--card)]">
         <div className="max-w-4xl mx-auto px-6 py-8">

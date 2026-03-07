@@ -17,23 +17,30 @@ export async function GET(request: Request) {
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
     const ownerOnly = searchParams.get("owner") === "true";
     const sharedOnly = searchParams.get("shared") === "true";
+    const deletedOnly = searchParams.get("deleted") === "true";
 
     const userId = new ObjectId(session.user.id);
     const docs = await getDocumentsCollection();
 
-    const filter: Record<string, unknown> = { isDeleted: { $ne: true } };
+    const filter: Record<string, unknown> = {};
 
-    if (ownerOnly) {
+    if (deletedOnly) {
+      filter.isDeleted = true;
       filter.ownerId = userId;
-    } else if (sharedOnly) {
-      filter["collaborators.userId"] = userId;
-      filter.ownerId = { $ne: userId };
     } else {
-      filter.$or = [
-        { ownerId: userId },
-        { "collaborators.userId": userId },
-        { isPublic: true },
-      ];
+      filter.isDeleted = { $ne: true };
+      if (ownerOnly) {
+        filter.ownerId = userId;
+      } else if (sharedOnly) {
+        filter["collaborators.userId"] = userId;
+        filter.ownerId = { $ne: userId };
+      } else {
+        filter.$or = [
+          { ownerId: userId },
+          { "collaborators.userId": userId },
+          { isPublic: true },
+        ];
+      }
     }
 
     const [documents, total] = await Promise.all([

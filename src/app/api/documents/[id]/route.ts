@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
-import { getDocumentsCollection, getUsersCollection } from "@/lib/db/collections";
+import { getDocumentsCollection, getUsersCollection, getCommentsCollection } from "@/lib/db/collections";
 import { createNotification, logActivity } from "@/lib/db/activity";
 import {
   requireAuth,
@@ -229,20 +229,42 @@ export async function DELETE(
     const idError = validateObjectId(id);
     if (idError) return idError;
 
+    const userId = new ObjectId(session.user.id);
+    const docId = new ObjectId(id);
+
+    // Try standard access check first (for non-deleted docs)
     const { error: accessError } = await requireDocumentAccess(
       id,
       session.user.id,
       "owner"
     );
-    if (accessError) return accessError;
 
+    if (accessError) {
+      // If 404, check if it's a soft-deleted doc owned by the user (permanent delete from trash)
+      const data = await accessError.json();
+      if (data.error === "Document not found") {
+        const docs = await getDocumentsCollection();
+        const deletedDoc = await docs.findOne({ _id: docId, isDeleted: true, ownerId: userId });
+        if (deletedDoc) {
+          const comments = await getCommentsCollection();
+          await Promise.all([
+            docs.deleteOne({ _id: docId }),
+            comments.deleteMany({ documentId: docId }),
+          ]);
+          return NextResponse.json({ success: true });
+        }
+      }
+      // Re-create the error response since we consumed it
+      return NextResponse.json({ error: data.error }, { status: accessError.status });
+    }
+
+    // Soft delete
     const docs = await getDocumentsCollection();
     await docs.updateOne(
-      { _id: new ObjectId(id) },
+      { _id: docId },
       { $set: { isDeleted: true, updatedAt: new Date() } }
     );
-
-    await logActivity(new ObjectId(id), new ObjectId(session.user.id), "deleted");
+    await logActivity(docId, userId, "deleted");
 
     return NextResponse.json({ success: true });
   } catch (err) {
